@@ -3,7 +3,7 @@
 # Builds and tests .c and .py files in _data/
 # ==========================================
 
-CLANG = /opt/homebrew/opt/llvm/bin/clang-21
+CLANG = clang
 RV_CFLAGS = --target=riscv64 -march=rv64g -mabi=lp64d
 RV0AS = ./rv0/rv0as
 RV0VM = ./rv0/rv0vm

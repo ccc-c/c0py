@@ -12,7 +12,9 @@ typedef uint64 pde_t;
 typedef long time_t;
 
 #if defined(_STDIO_H)
-#define MKFS
+  #ifndef MKFS
+    #define MKFS
+  #endif
 #endif
 
 #if !defined(MKFS)
