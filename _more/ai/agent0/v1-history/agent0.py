@@ -1,0 +1,266 @@
+#!/usr/bin/env python3
+# agent1history.py - AI Agent with memory and tool feedback
+# Run: python agent1history.py
+
+import subprocess
+import json
+import os
+import asyncio
+import aiohttp
+import re
+
+# ─── Configuration ───
+
+WORKSPACE = os.path.expanduser("~/.agent0")
+MODEL = "minimax-m2.5:cloud"
+MAX_TURNS = 5
+
+# ─── Memory ───
+
+conversation_history = []
+key_info = []
+
+# ─── Tools ───
+
+TOOLS = [
+    {
+        "name": "run_command",
+        "description": "Run a shell command",
+        "input_schema": {
+            "type": "object",
+            "properties": {
+                "command": {"type": "string", "description": "The command to run"}
+            },
+            "required": ["command"]
+        }
+    },
+    {
+        "name": "read_file",
+        "description": "Read a file from the filesystem",
+        "input_schema": {
+            "type": "object",
+            "properties": {
+                "path": {"type": "string", "description": "Path to the file"}
+            },
+            "required": ["path"]
+        }
+    },
+    {
+        "name": "write_file",
+        "description": "Write content to a file",
+        "input_schema": {
+            "type": "object",
+            "properties": {
+                "path": {"type": "string", "description": "Path to the file"},
+                "content": {"type": "string", "description": "Content to write"}
+            },
+            "required": ["path", "content"]
+        }
+    },
+]
+
+# ─── Ollama API ───
+
+async def call_ollama(prompt: str, system: str = "") -> str:
+    """Call Ollama API"""
+    full_prompt = f"{system}\n\n{prompt}" if system else prompt
+    
+    payload = {
+        "model": MODEL,
+        "prompt": full_prompt,
+        "stream": False
+    }
+    
+    async with aiohttp.ClientSession() as session:
+        async with session.post(
+            "http://localhost:11434/api/generate",
+            json=payload,
+            timeout=aiohttp.ClientTimeout(total=120)
+        ) as resp:
+            result = await resp.json()
+            return result.get("response", "").strip()
+
+# ─── Tool Execution ───
+
+def execute_tool(name, tool_input):
+    print(f"\n=== TOOL EXECUTE ===")
+    print(f"Tool: {name}")
+    print(f"Input: {tool_input}")
+    
+    if name == "run_command":
+        try:
+            result = subprocess.run(
+                tool_input["command"], shell=True, 
+                capture_output=True, text=True, timeout=30,
+                cwd=os.getcwd()
+            )
+            output = result.stdout + result.stderr
+            print(f"Result: {output}")
+            print(f"=== END ===\n")
+            return output if output else "(no output)"
+        except Exception as e:
+            print(f"Error: {e}")
+            print(f"=== END ===\n")
+            return f"Error: {e}"
+    
+    elif name == "read_file":
+        try:
+            with open(tool_input["path"], "r") as f:
+                content = f.read()[:10000]
+            print(f"Result: {content[:200]}")
+            print(f"=== END ===\n")
+            return content
+        except Exception as e:
+            print(f"Error: {e}")
+            print(f"=== END ===\n")
+            return f"Error: {e}"
+    
+    elif name == "write_file":
+        try:
+            os.makedirs(os.path.dirname(tool_input["path"]) or ".", exist_ok=True)
+            with open(tool_input["path"], "w") as f:
+                f.write(tool_input["content"])
+            print(f"Result: Wrote to {tool_input['path']}")
+            print(f"=== END ===\n")
+            return f"Wrote to {tool_input['path']}"
+        except Exception as e:
+            print(f"Error: {e}")
+            print(f"=== END ===\n")
+            return f"Error: {e}"
+    
+    print(f"=== END ===\n")
+    return f"Unknown tool: {name}"
+
+# ─── Memory Management ───
+
+def build_context():
+    context_parts = []
+    if key_info:
+        context_parts.append("Key information:\n" + "\n".join(f"- {k}" for k in key_info))
+    if conversation_history:
+        context_parts.append("Recent conversation:\n" + "\n".join(conversation_history[-MAX_TURNS*2:]))
+    return "\n\n".join(context_parts)
+
+def update_memory(user_input, assistant_response, tool_result=None):
+    conversation_history.append(f"User: {user_input}")
+    conversation_history.append(f"Assistant: {assistant_response}")
+    if tool_result:
+        conversation_history.append(f"Tool result: {tool_result[:500]}")
+    
+    while len(conversation_history) > MAX_TURNS * 4:
+        conversation_history.pop(0)
+
+async def extract_key_info(user_input, assistant_response):
+    extract_prompt = f"""Based on this conversation, should any key information be remembered long-term?
+If yes, output a JSON list of key points (max 2). If no, output an empty list [].
+
+Conversation:
+User: {user_input}
+Assistant: {assistant_response}
+
+Key information to remember:"""
+    
+    try:
+        result = await call_ollama(extract_prompt, "")
+        match = re.search(r'\[.*\]', result, re.DOTALL)
+        if match:
+            items = json.loads(match.group(0))
+            for item in items:
+                if item not in key_info:
+                    key_info.append(item)
+    except:
+        pass
+
+# ─── Agent ───
+
+SYSTEM_PROMPT = """You are Jarvis, a helpful AI assistant.
+You have tools - use them to help the user.
+
+Available tools:
+- run_command: Run a shell command
+- read_file: Read a file
+- write_file: Write to a file
+
+When you need to use a tool, output in this format:
+<tool>
+{"name": "tool_name", "input": {"key": "value"}}
+</tool>
+
+Otherwise, just respond directly."""
+
+def main():
+    os.makedirs(WORKSPACE, exist_ok=True)
+    
+    print(f"Agent0 - {MODEL} (with memory)")
+    print(f"Workspace: {WORKSPACE}")
+    print("Commands: /quit, /memory (show key info)\n")
+    
+    while True:
+        try:
+            user_input = input("You: ").strip()
+        except (EOFError, KeyboardInterrupt):
+            print("\nGoodbye!")
+            break
+        
+        if not user_input:
+            continue
+        if user_input.lower() in ["/quit", "/exit", "/q"]:
+            print("Goodbye!")
+            break
+        if user_input.lower() == "/memory":
+            print(f"Key info: {key_info}")
+            continue
+        
+        context = build_context()
+        full_prompt = f"{context}\n\nUser: {user_input}" if context else f"User: {user_input}"
+        
+        response = asyncio.run(call_ollama(full_prompt, SYSTEM_PROMPT))
+        
+        tool_result = None
+        current_response = response
+        
+        while True:
+            tool_matches = re.findall(r'<tool>(.+?)</tool>', current_response, re.DOTALL)
+            if not tool_matches:
+                break
+            
+            all_tool_outputs = []
+            for tool_match in tool_matches:
+                try:
+                    tool_json = tool_match.strip()
+                    while tool_json.endswith("}") and tool_json.count("{") < tool_json.count("}"):
+                        tool_json = tool_json[:-1].rstrip()
+                    tool_data = json.loads(tool_json)
+                    tool_name = tool_data.get("name")
+                    tool_input = tool_data.get("input", {})
+                    
+                    tool_output = execute_tool(tool_name, tool_input)
+                    all_tool_outputs.append(f"[{tool_name}]: {tool_output}")
+                except json.JSONDecodeError as e:
+                    print(f"JSON parse error: {e}")
+                    print(f"Raw tool data: {tool_match}")
+                except Exception as e:
+                    print(f"Tool error: {e}")
+            
+            tool_result = (tool_result or "") + "\n" + "\n".join(all_tool_outputs)
+            
+            follow_up_prompt = f"""Previous context: {context}
+
+User: {user_input}
+Previous assistant responses: {current_response}
+Tool outputs:
+{chr(10).join(all_tool_outputs)}
+
+If you need more tools, output them. Otherwise, provide your final response to the user:"""
+            current_response = asyncio.run(call_ollama(follow_up_prompt, SYSTEM_PROMPT))
+        
+        response = current_response
+        
+        print(f"\n🤖 {response}\n")
+        
+        update_memory(user_input, response, tool_result)
+        if tool_result:
+            asyncio.run(extract_key_info(user_input, response))
+
+if __name__ == "__main__":
+    main()
