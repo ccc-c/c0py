@@ -37,7 +37,6 @@
 .endm
 
 .macro reg_save base
-        # save the registers.
         sw ra, 0(\base)
         sw sp, 4(\base)
         sw gp, 8(\base)
@@ -72,11 +71,9 @@
 .endm
 
 .macro reg_load base
-        # restore registers.
         lw ra, 0(\base)
         lw sp, 4(\base)
         lw gp, 8(\base)
-        # not this, in case we moved CPUs: lw tp, 12(\base)
         lw t0, 16(\base)
         lw t1, 20(\base)
         lw t2, 24(\base)
@@ -106,95 +103,78 @@
         lw t6, 120(\base)
 .endm
 # ============ Macro END   ==================
- 
-# Context switch
-#
-#   void sys_switch(struct context *old, struct context *new);
-# 
-# Save current registers in old. Load from new.
 
+# Context switch
 .globl sys_switch
 .align 4
 sys_switch:
         ctx_save a0  # a0 => struct context *old
         ctx_load a1  # a1 => struct context *new
-        ret          # pc=ra; swtch to new task (new->ra)
+        ret
 
+# sys_kernel is called from sys_timer via mret
+# It saves registers, calls timer_handler which switches to OS
 .globl sys_kernel
 .align 4
 sys_kernel:
-        # Save task sp to scratch[28]
-        csrr a0, mscratch
-        sw sp, 28(a0)
-        
-        # Switch to kernel stack
-        lui sp, 0x80002
-        addi sp, sp, 0x28
+        # Save all registers to task's stack
         addi sp, sp, -128
-        
-        # Save all registers to kernel stack
         reg_save sp
         
-        # Call timer_handler
+        # Save original sp (before subtracting 128) to mscratch
+        csrrw t0, mscratch, t0
+        addi a0, sp, 128
+        sw a0, 28(t0)
+        csrrw t0, mscratch, t0
+        
         call timer_handler
         
-        # Restore all registers
+        # This should never be reached since timer_handler calls task_os()
+        # But if it is, restore and return to interrupted task
         reg_load sp
-        
-        # Switch back to task stack
-        csrr a0, mscratch
-        lw sp, 28(a0)
+        addi sp, sp, 128
 
-        # Restore mepc from scratch
+        # restore mepc from mscratch
+        csrrw a0, mscratch, a0
+        sw a1, 0(a0)
         lw a1, 20(a0)
         csrw mepc, a1
+        lw a1, 0(a0)
+        csrrw a0, mscratch, a0
         
-        # Return to interrupted task
         ret
 
+# Timer interrupt handler
 .globl sys_timer
 .align 4
 sys_timer:
-        # timer_init() has set up the memory that mscratch points to:
-        # scratch[0,4,8] : register save area.
-        # scratch[12] : address of CLINT's MTIMECMP register.
-        # scratch[16] : desired interval between interrupts.
-        # scratch[20] : saved mepc
-        # scratch[28] : saved task sp
-
-        # save register to scratch area
-        csrrw a0, mscratch, a0 #  exchange(mscratch,a0)
+        # Save a0, a1, a2 to scratch area
+        csrrw a0, mscratch, a0
         sw a1, 0(a0)
         sw a2, 4(a0)
         sw a3, 8(a0)
+        
+        # Save mepc and mcause
         csrr a1, mepc
-        sw a1, 20(a0)     # save mepc to scratch area 
+        sw a1, 20(a0)
         csrr a1, mcause
-        sw a1, 24(a0)     # save mcause to scratch area 
-
-        # Save task sp to scratch[28]
-        sw sp, 28(a0)
-
-        # Switch to kernel stack
-        lui sp, 0x80002
-        addi sp, sp, 0x28
-        addi sp, sp, -128
-
-        la a1, sys_kernel # mepc = sys_kernel (la : load address)
-        csrw mepc, a1     # mret : will jump to sys_kernel
-
-        # schedule the next timer interrupt
-        # by adding interval to mtimecmp.
-        lw a1, 12(a0)  # CLINT_MTIMECMP(hart)
-        lw a2, 16(a0)  # interval
-        lw a3, 0(a1)   # a3 = CLINT_MTIMECMP(hart)
-        add a3, a3, a2 # a3 += interval
-        sw a3, 0(a1)   # CLINT_MTIMECMP(hart) = a3
- 
-        # restore registers from scratch area
+        sw a1, 24(a0)
+        
+        # Set mepc to sys_kernel
+        la a1, sys_kernel
+        csrw mepc, a1
+        
+        # Schedule next timer interrupt
+        lw a1, 12(a0)
+        lw a2, 16(a0)
+        lw a3, 0(a1)
+        add a3, a3, a2
+        sw a3, 0(a1)
+        
+        # Restore a0, a1, a2
         lw a3, 8(a0)
         lw a2, 4(a0)
         lw a1, 0(a0)
-        csrrw a0, mscratch, a0 # exchange(mscratch,a0)
-
-        mret              # jump to mepc (=sys_kernel)
+        csrrw a0, mscratch, a0
+        
+        mret

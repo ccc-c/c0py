@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
-# agent1history.py - AI Agent with memory and tool feedback
-# Run: python agent1history.py
+# agent0.py - AI Agent with memory and tool feedback
+# Run: python agent0.py
 
 import subprocess
 import json
