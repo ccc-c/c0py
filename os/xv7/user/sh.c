@@ -138,12 +138,10 @@ get_next_char:
         if(hist_index < hist_count) hist_index++;
       }
 
-      write(2, "\r", 1);
-      for(int j = 0; j < 80; j++){
-        write(2, " ", 1);
+      while(i > 0){
+        write(2, "\b \b", 3);
+        i--;
       }
-      write(2, "\r", 1);
-      write(2, "$ ", 2);
       memset(buf, 0, nbuf);
       if(hist_index < hist_count){
         char *h = history[hist_index % HIST_SIZE];
@@ -151,10 +149,8 @@ get_next_char:
         if(hlen > nbuf - 1) hlen = nbuf - 1;
         memmove(buf, h, hlen);
         i = hlen;
-      } else {
-        i = 0;
+        write(2, buf, i);
       }
-      write(2, buf, i);
       escape_state = 0;
       escape_len = 0;
       goto get_next_char;
