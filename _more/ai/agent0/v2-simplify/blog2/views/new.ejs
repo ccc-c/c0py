@@ -1,0 +1,21 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>New Post</title>
+  <style>
+    body { font-family: sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; }
+    input, textarea { width: 100%; margin-bottom: 10px; }
+    textarea { height: 150px; }
+    button { padding: 10px 20px; }
+  </style>
+</head>
+<body>
+  <h1>New Post</h1>
+  <form method="POST" action="/new">
+    <input type="text" name="title" placeholder="Title" required>
+    <textarea name="content" placeholder="Content" required></textarea>
+    <button type="submit">Publish</button>
+  </form>
+  <p><a href="/">Back</a></p>
+</body>
+</html>
