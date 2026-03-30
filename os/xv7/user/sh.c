@@ -138,10 +138,14 @@ get_next_char:
         if(hist_index < hist_count) hist_index++;
       }
 
+      write(2, "\r", 1);
+      write(2, "$ ", 2);
       while(i > 0){
-        write(2, "\b \b \b", 6);
+        write(2, " ", 1);
         i--;
       }
+      write(2, "\r", 1);
+      write(2, "$ ", 2);
       memset(buf, 0, nbuf);
       if(hist_index < hist_count){
         char *h = history[hist_index % HIST_SIZE];
