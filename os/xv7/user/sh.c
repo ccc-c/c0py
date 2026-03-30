@@ -139,10 +139,8 @@ get_next_char:
       }
 
       write(2, "\r", 1);
-      write(2, "$ ", 2);
-      while(i > 0){
+      for(int j = 0; j < 80; j++){
         write(2, " ", 1);
-        i--;
       }
       write(2, "\r", 1);
       write(2, "$ ", 2);
@@ -153,8 +151,10 @@ get_next_char:
         if(hlen > nbuf - 1) hlen = nbuf - 1;
         memmove(buf, h, hlen);
         i = hlen;
-        write(2, buf, i);
+      } else {
+        i = 0;
       }
+      write(2, buf, i);
       escape_state = 0;
       escape_len = 0;
       goto get_next_char;
