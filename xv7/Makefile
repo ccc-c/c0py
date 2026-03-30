@@ -173,6 +173,7 @@ UPROGS=\
 	$U/_echo\
 	$U/_forktest\
 	$U/_grep\
+	$U/_history\
 	$U/_httpd\
 	$U/_ifconfig\
 	$U/_init\
