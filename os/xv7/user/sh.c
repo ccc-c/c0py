@@ -139,7 +139,7 @@ get_next_char:
       }
 
       while(i > 0){
-        write(2, "\b \b \b", 6);
+        write(2, "\b \b", 3);
         i--;
       }
       memset(buf, 0, nbuf);
