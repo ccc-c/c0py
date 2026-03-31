@@ -3,6 +3,4 @@ function factorial(n) {
   return n * factorial(n - 1);
 }
 
-for (let i = 0; i <= 10; i++) {
-  console.log(i + "! = " + factorial(i));
-}
+console.log('factorial(5)=', factorial(5))
