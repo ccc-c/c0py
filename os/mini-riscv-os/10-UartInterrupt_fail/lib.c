@@ -9,7 +9,7 @@ void lib_delay(volatile int count)
 }
 
 int lib_putc(char ch) {
-	while ((*UART_LSR & UART_LSR_EMPTY_MASK) == 0);
+	while ((*UART_LSR & UART_LSR_TX_EMPTY) == 0);
 	return *UART_THR = ch;
 }
 

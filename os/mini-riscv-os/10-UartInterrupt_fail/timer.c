@@ -32,7 +32,7 @@ void timer_init()
 
   w_mtvec((reg_t)sys_timer);
   w_mstatus(r_mstatus() | MSTATUS_MIE);
-  w_mie(r_mie() | MIE_MTIE);
+  w_mie(r_mie() | MIE_MTIE | MIE_MEIE);
 
   isr_register(TIMER_IRQ, timer_handler_isr);
 }

@@ -1,6 +1,7 @@
 #include "os.h"
 #include "mutex.h"
 #include "isr.h"
+#include "uart.h"
 
 extern volatile int tasks_ready;
 extern int taskTop;
@@ -8,10 +9,16 @@ extern int taskTop;
 mutex_t m;
 int shared_counter = 0;
 
-static volatile int isr_call_count = 0;
+static volatile int uart_isr_call_count = 0;
+static volatile char last_char = 0;
 
-void my_timer_isr(void) {
-    isr_call_count++;
+void uart_handler_isr(void) {
+    uart_isr_call_count++;
+    int c = uart_getc();
+    if (c >= 0) {
+        last_char = (char)c;
+        lib_printf("UART ISR: char='%c' count=%d\n", last_char, uart_isr_call_count);
+    }
 }
 
 void user_task0(void)
@@ -74,15 +81,16 @@ void user_task4(void)
 {
     lib_printf("Task4 [hart %d]: Created!\n", r_mhartid());
     
-    lib_printf("Task4: registering ISR for IRQ 5...\n");
-    isr_register(5, my_timer_isr);
-    lib_printf("Task4: ISR registered, call_count=%d\n", isr_call_count);
+    lib_printf("Task4: registering UART ISR for IRQ %d...\n", UART_IRQ);
+    isr_register(UART_IRQ, uart_handler_isr);
+    lib_printf("Task4: UART ISR registered, call_count=%d\n", uart_isr_call_count);
     
     int last_count = 0;
     while (1) {
-        if (isr_call_count != last_count) {
-            lib_printf("Task4 [hart %d]: ISR called! count=%d\n", r_mhartid(), isr_call_count);
-            last_count = isr_call_count;
+        if (uart_isr_call_count != last_count) {
+            lib_printf("Task4 [hart %d]: UART ISR called! count=%d, last_char='%c'\n", 
+                       r_mhartid(), uart_isr_call_count, last_char);
+            last_count = uart_isr_call_count;
         }
         
         mutex_lock(&m);

@@ -1,4 +1,6 @@
 #include "os.h"
+#include "plic.h"
+#include "uart.h"
 
 volatile int tasks_ready = 0;
 volatile int harts_ready = 0;
@@ -15,6 +17,11 @@ void os_start() {
     if (id == 0) {
         lib_printf("Hart %d: OS start, initializing ISR\n", id);
         isr_init();
+        lib_printf("Hart %d: OS start, initializing PLIC\n", id);
+        plic_init();
+        lib_printf("Hart %d: OS start, initializing UART\n", id);
+        uart_init();
+        plic_enable_irq(UART_IRQ, 1);
         lib_printf("Hart %d: OS start, initializing tasks\n", id);
         user_init();
         __sync_synchronize();
@@ -27,8 +34,8 @@ void os_start() {
     __sync_synchronize();
     
     lib_printf("Hart %d: init scheduler\n", id);
-    init_scheduler(id);
     timer_init();
+    lib_printf("Hart %d: timer_init done\n", id);
     __sync_synchronize();
     harts_ready++;
     

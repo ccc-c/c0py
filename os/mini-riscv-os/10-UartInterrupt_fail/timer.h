@@ -12,5 +12,6 @@ extern void timer_handler_isr();
 extern void timer_init();
 
 #define TIMER_IRQ 7
+#define UART_IRQ 10
 
 #endif
