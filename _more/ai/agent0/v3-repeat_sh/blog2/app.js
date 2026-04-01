@@ -37,7 +37,7 @@ app.post('/posts', (req, res) => {
   res.redirect('/');
 });
 
-const PORT = 3000;
+const PORT = 3050;
 app.listen(PORT, () => {
   console.log(`Server running at http://localhost:${PORT}`);
 });
