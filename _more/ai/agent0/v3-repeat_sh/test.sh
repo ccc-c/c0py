@@ -1,7 +1,8 @@
 #!/bin/bash
 set -e
 
-cd /Users/Shared/ccc/c0py/_more/ai/agent0/v3-history
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+cd "$SCRIPT_DIR"
 
 echo "=== Testing agent0.py to create a Node.js blog system in blog2/ ==="
 

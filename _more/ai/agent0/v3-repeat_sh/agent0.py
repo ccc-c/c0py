@@ -178,8 +178,6 @@ def main():
             for tool_match in tool_matches:
                 try:
                     tool_json = tool_match.strip()
-                    while tool_json.endswith("}") and tool_json.count("{") < tool_json.count("}"):
-                        tool_json = tool_json[:-1].rstrip()
                     tool_data = json.loads(tool_json)
                     tool_name = tool_data.get("name")
                     tool_input = tool_data.get("input", {})

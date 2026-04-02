@@ -37,16 +37,7 @@ app.post('/posts', (req, res) => {
   res.redirect('/');
 });
 
-app.get('/posts/:id', (req, res) => {
-  const post = db.prepare('SELECT * FROM posts WHERE id = ?').get(req.params.id);
-  if (post) {
-    res.render('show', { post });
-  } else {
-    res.status(404).send('Post not found');
-  }
-});
-
-const PORT = 3000;
+const PORT = 3050;
 app.listen(PORT, () => {
-  console.log(`Blog running at http://localhost:${PORT}`);
+  console.log(`Server running at http://localhost:${PORT}`);
 });
