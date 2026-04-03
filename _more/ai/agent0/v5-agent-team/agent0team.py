@@ -1,606 +1,564 @@
 #!/usr/bin/env python3
-# agent0team.py - Team AI Agent with Planner/Generator/Evaluator
-# Run: python agent0team.py [--generators N] [--evaluators N] [--max-iterations N] [--debug]
+# agent0team.py - Agent Team with Planner/Generator/Evaluator roles
+# Run: python agent0team.py
 
 import subprocess
 import os
-import sys
 import asyncio
 import aiohttp
 import re
-import json
 import argparse
-import tempfile
-import shutil
-from datetime import datetime
-from pathlib import Path
 from dataclasses import dataclass, field
 from typing import Optional
 
-import agent0
-
-# ─── Configuration ───
-
 WORKSPACE = os.path.expanduser("~/.agent0")
 MODEL = "minimax-m2.5:cloud"
-REVIEWER_MODEL = "minimax-m2.5:cloud"
 MAX_TURNS = 5
-
+MAX_ITERATIONS = 3
 NUM_GENERATORS = 1
 NUM_EVALUATORS = 1
-MAX_ITERATIONS = 3
 
-DEBUG = False
-
-# ─── Directories ───
-
-MEMORY_DIR = os.path.join(WORKSPACE, "team", "memory")
-SHARED_DIR = os.path.join(WORKSPACE, "team", "shared")
-
-# ─── Global State ───
-
-conversation_history = []
-key_info = []
-team_log = []
-current_iteration = 0
-current_task_id = None
-
-# ─── Shared Agent0 instance for tool execution ───
-
-shared_agent = None
-
-def get_agent() -> agent0.Agent0:
-    """Get shared Agent0 instance"""
-    global shared_agent
-    if shared_agent is None:
-        shared_agent = agent0.Agent0(
-            workspace=WORKSPACE,
-            model=MODEL,
-            reviewer_model=REVIEWER_MODEL,
-            max_turns=MAX_TURNS
-        )
-    return shared_agent
-
-# ─── Data Classes ───
 
 @dataclass
-class Plan:
-    analysis: str = ""
-    steps: list = field(default_factory=list)
-    decision: str = "continue"
-    feedback: str = ""
-
-@dataclass
-class TaskContext:
-    user_input: str = ""
-    current_plan: Optional[Plan] = None
-    generators_outputs: list = field(default_factory=list)
-    evaluators_results: list = field(default_factory=list)
-    iteration: int = 0
-    team_context: str = ""
-
-# ─── Ollama API ───
-
-async def call_ollama(prompt: str, system: str = "", model: str = MODEL) -> str:
-    """Call Ollama API"""
-    full_prompt = f"{system}\n\n{prompt}" if system else prompt
+class Agent0:
+    workspace: str = ""
+    model: str = "minimax-m2.5:cloud"
+    reviewer_model: str = "minimax-m2.5:cloud"
+    max_turns: int = 5
     
-    payload = {
-        "model": model,
-        "prompt": full_prompt,
-        "stream": False
-    }
+    conversation_history: list = field(default_factory=list)
+    key_info: list = field(default_factory=list)
+    outside_access_granted: set = field(default_factory=set)
     
-    async with aiohttp.ClientSession() as session:
-        async with session.post(
-            "http://localhost:11434/api/generate",
-            json=payload,
-            timeout=aiohttp.ClientTimeout(total=120)
-        ) as resp:
-            result = await resp.json()
-            return result.get("response", "").strip()
+    SYSTEM_PROMPT: str = """你是 Jarvis，一個有用的 AI 助理。
 
-# ─── Memory Management ───
+重要規則：
+1. 當你需要執行 shell 命令時，用 <shell> 標籤包住命令
+2. 如果需要多個命令，可以輸出多個 <shell> 標籤
+3. 當所以命令都執行完後，用 <end/> 結束
 
-def load_memory(agent_type: str, agent_id: int) -> list:
-    """Load agent memory from JSON file"""
-    filepath = os.path.join(MEMORY_DIR, f"{agent_type}_{agent_id}.json")
-    try:
-        with open(filepath, 'r') as f:
-            data = json.load(f)
-            return data.get("items", [])
-    except (FileNotFoundError, json.JSONDecodeError):
-        return []
-
-def save_memory(agent_type: str, agent_id: int, items: list):
-    """Save agent memory to JSON file"""
-    os.makedirs(MEMORY_DIR, exist_ok=True)
-    filepath = os.path.join(MEMORY_DIR, f"{agent_type}_{agent_id}.json")
+流程：
+- 輸出所有需要的 <shell>...</shell> 標籤
+- 執行完後你會看到結果
+- 當需要更多命令時繼續輸出 <shell>
+- 全部完成後輸出 <end/>"""
     
-    data = {
-        "agent_type": agent_type,
-        "agent_id": agent_id,
-        "updated_at": datetime.now().isoformat(),
-        "items": items
-    }
+    def __post_init__(self):
+        if not self.workspace:
+            self.workspace = os.path.expanduser("~/.agent0")
     
-    with open(filepath, 'w') as f:
-        json.dump(data, f, indent=2, ensure_ascii=False)
-
-def append_memory(agent_type: str, agent_id: int, content: str, iteration: int):
-    """Append memory to agent"""
-    items = load_memory(agent_type, agent_id)
-    items.append({
-        "timestamp": datetime.now().isoformat(),
-        "content": content,
-        "iteration": iteration
-    })
-    save_memory(agent_type, agent_id, items)
-
-def get_memory(agent_type: str, agent_id: int, limit: int = 10) -> list:
-    """Get agent memory (simplified)"""
-    items = load_memory(agent_type, agent_id)
-    return [item["content"] for item in items[-limit:]]
-
-# ─── Shared File Management ───
-
-def read_shared(filename: str) -> str:
-    """Read shared file"""
-    filepath = os.path.join(SHARED_DIR, filename)
-    try:
-        with open(filepath, 'r') as f:
-            return f.read()
-    except FileNotFoundError:
-        return ""
-
-def write_shared(filename: str, content: str):
-    """Write shared file"""
-    os.makedirs(SHARED_DIR, exist_ok=True)
-    filepath = os.path.join(SHARED_DIR, filename)
-    with open(filepath, 'w') as f:
-        f.write(content)
-
-def append_shared(filename: str, line: str):
-    """Append line to shared file"""
-    os.makedirs(SHARED_DIR, exist_ok=True)
-    filepath = os.path.join(SHARED_DIR, filename)
-    with open(filepath, 'a') as f:
-        f.write(line + "\n")
-
-def get_shared_context() -> str:
-    """Get shared context for all agents"""
-    context_parts = []
+    async def call_ollama(self, prompt: str, system: str = "") -> str:
+        full_prompt = f"{system}\n\n{prompt}" if system else prompt
+        
+        payload = {
+            "model": self.model,
+            "prompt": full_prompt,
+            "stream": False
+        }
+        
+        try:
+            async with aiohttp.ClientSession() as session:
+                async with session.post(
+                    "http://localhost:11434/api/generate",
+                    json=payload,
+                    timeout=aiohttp.ClientTimeout(total=120)
+                ) as resp:
+                    result = await resp.json()
+                    return result.get("response", "").strip()
+        except Exception as e:
+            return f"[錯誤: {e}]"
     
-    if conversation_history:
-        context_parts.append("<history>\n" + "\n".join(conversation_history[-MAX_TURNS*2:]) + "\n</history>")
+    async def review_command(self, cmd: str) -> tuple[bool, str]:
+        review_prompt = f"""Review this command: {cmd}
+
+Is it SAFE to run? Reply with SAFE or UNSAFE."""
+
+        payload = {
+            "model": self.reviewer_model,
+            "prompt": review_prompt,
+            "stream": False
+        }
+        
+        try:
+            async with aiohttp.ClientSession() as session:
+                async with session.post(
+                    "http://localhost:11434/api/generate",
+                    json=payload,
+                    timeout=aiohttp.ClientTimeout(total=60)
+                ) as resp:
+                    result = await resp.json()
+                    response = result.get("response", "").strip()
+                    
+                    if response.startswith("SAFE"):
+                        return True, ""
+                    else:
+                        reason = response.replace("UNSAFE", "").strip(" -")
+                        return False, reason
+        except Exception as e:
+            return False, f"審查失敗: {e}"
     
-    if key_info:
-        items_xml = "\n".join(f"  <item>{k}</item>" for k in key_info)
-        context_parts.append(f"<memory>\n{items_xml}\n</memory>")
+    def check_outside_access(self, cmd: str, cwd: str) -> tuple[bool, str]:
+        def extract_paths(c):
+            paths = []
+            patterns = [
+                (r'(?:^|\s)(?:cat|ls|cd|rm|cp|mv|chmod|chown|find|grep)\s+(/[^\s]+)', 1),
+                (r'(?:^|\s)\.\./[^\s]*', 0),
+                (r'(?:^|\s)\.\.(?:\s|$)', 0),
+            ]
+            for pattern, group in patterns:
+                for match in re.finditer(pattern, c, re.MULTILINE):
+                    path = match.group(group).strip() if group > 0 else ".."
+                    if path:
+                        paths.append(path)
+            return paths
+        
+        paths = extract_paths(cmd)
+        cwd_abs = os.path.abspath(cwd)
+        
+        for path in paths:
+            if path.startswith('/'):
+                abs_path = path
+            else:
+                abs_path = os.path.abspath(os.path.join(cwd, path))
+            
+            if path == '..' or path.startswith('../'):
+                return True, abs_path
+            
+            if not abs_path.startswith(cwd_abs):
+                return True, abs_path
+        
+        return False, ""
     
-    return "\n\n".join(context_parts)
-
-def clear_shared():
-    """Clear shared files"""
-    os.makedirs(SHARED_DIR, exist_ok=True)
-    for f in os.listdir(SHARED_DIR):
-        if f.startswith("teamlog") or f.startswith("output") or f.startswith("evaluation"):
-            os.remove(os.path.join(SHARED_DIR, f))
-
-# ─── Context Building ───
-
-def build_context():
-    """Build context for LLM"""
-    return get_shared_context()
-
-def update_memory(user_input: str, assistant_response: str, tool_result: str = None):
-    """Update conversation history"""
-    conversation_history.append(f"  <user>{user_input}</user>")
-    conversation_history.append(f"  <assistant>{assistant_response}</assistant>")
-    if tool_result:
-        conversation_history.append(f"  <tool>{tool_result[:500]}</tool>")
+    def ask_outside_access(self, path: str) -> bool:
+        print(f"\n⚠️  命令嘗試存取本資料夾以外的檔案: {path}")
+        print("   是否允許？（y/N）：", end=" ")
+        try:
+            response = input().strip().lower()
+            return response in ['y', 'yes']
+        except:
+            return False
     
-    while len(conversation_history) > MAX_TURNS * 4:
-        conversation_history.pop(0)
+    def build_context(self) -> str:
+        context_parts = []
+        if self.key_info:
+            items_xml = "\n".join(f"  <item>{k}</item>" for k in self.key_info)
+            context_parts.append(f"<memory>\n{items_xml}\n</memory>")
+        if self.conversation_history:
+            context_parts.append("<history>\n" + "\n".join(self.conversation_history[-self.max_turns*2:]) + "\n</history>")
+        return "\n\n".join(context_parts)
+    
+    def update_memory(self, user_input: str, assistant_response: str, tool_result: str = None):
+        self.conversation_history.append(f"  <user>{user_input}</user>")
+        self.conversation_history.append(f"  <assistant>{assistant_response}</assistant>")
+        if tool_result:
+            self.conversation_history.append(f"  <tool>{tool_result[:500]}</tool>")
+        
+        while len(self.conversation_history) > self.max_turns * 4:
+            self.conversation_history.pop(0)
+    
+    async def execute_shell(self, cmd: str, cwd: str = None) -> tuple[int, str]:
+        print(f"\n执行命令: {cmd}")
+        
+        is_safe, reason = await self.review_command(cmd)
+        
+        if not is_safe:
+            print(f"⚠️  被安全審查阻止: {reason}")
+            return -1, f"阻止：{reason}"
+        
+        if cwd is None:
+            cwd = os.getcwd()
+        
+        needs_access, path = self.check_outside_access(cmd, cwd)
+        if needs_access:
+            if path in self.outside_access_granted:
+                pass
+            else:
+                if not self.ask_outside_access(path):
+                    print(f"⚠️  已拒絕存取：{path}")
+                    return -1, f"拒絕：{path}"
+                self.outside_access_granted.add(path)
+        
+        try:
+            result = subprocess.run(cmd, shell=True, capture_output=True, text=True, timeout=30, cwd=cwd)
+            output = result.stdout + result.stderr
+            print(f"結果: {output if output else '（無輸出）'}")
+            return result.returncode, output
+        except Exception as e:
+            print(f"錯誤：{e}")
+            return -1, f"錯誤：{e}"
+    
+    async def run(self, user_input: str, system_prompt: str = "") -> tuple[str, str]:
+        SYSTEM = system_prompt if system_prompt else self.SYSTEM_PROMPT
+        
+        context = self.build_context()
+        full_prompt = f"{context}\n\n<user>{user_input}</user>" if context else f"<user>{user_input}</user>"
+        
+        response = await self.call_ollama(full_prompt, SYSTEM)
+        
+        print(f"\n🤖 回應: {response[:200]}{'...' if len(response) > 200 else ''}")
+        
+        tool_result = None
+        current_response = response
+        
+        while True:
+            if "<end/>" in current_response:
+                before_end = current_response.split("<end/>")[0].strip()
+                if not before_end:
+                    response = "命令已執行。" if tool_result else "完成。"
+                else:
+                    response = before_end
+                break
+            
+            shell_matches = re.findall(r'<shell>(.+?)</shell>', current_response, re.DOTALL)
+            if not shell_matches:
+                response = current_response
+                break
+            
+            all_outputs = []
+            for cmd in shell_matches:
+                cmd = cmd.strip()
+                returncode, output = await self.execute_shell(cmd)
+                
+                if returncode != 0:
+                    all_outputs.append(f"$ {cmd}\n{output}")
+                else:
+                    all_outputs.append(f"$ {cmd}\n{output if output else '（無輸出）'}")
+            
+            tool_result = (tool_result or "") + "\n" + "\n".join(all_outputs)
+            
+            follow_up_prompt = f"""<context>{context}</context>
 
-async def extract_key_info(user_input: str, assistant_response: str):
-    """Extract key info for long-term memory"""
-    extract_prompt = f"""根據這段對話，有沒有需要長期記憶的關鍵資訊？
-如果有，用以下格式輸出（最多 2 項）。如果沒有，輸出 <memory></memory>。
-
-<memory>
-  <item>要記憶的資訊 1</item>
-  <item>要記憶的資訊 2</item>
-</memory>
-
-對話：
 <user>{user_input}</user>
-<assistant>{assistant_response}</assistant>"""
-    
-    try:
-        result = await call_ollama(extract_prompt, "")
-        matches = re.findall(r'<item>(.*?)</item>', result, re.DOTALL)
-        for item in matches:
-            item = item.strip()
-            if item and item not in key_info:
-                key_info.append(item)
-    except:
-        pass
+<assistant>{current_response}</assistant>
+<output>
+{chr(10).join(all_outputs)}
+</output>
 
-# ─── Planner ───
+Done. Output <end/> now."""
+            current_response = await self.call_ollama(follow_up_prompt, SYSTEM)
+        
+        self.update_memory(user_input, response, tool_result)
+        
+        return response, tool_result
 
-PLANNER_SYSTEM = """你是 Planner，團隊的規劃���。
+
+class Planner(Agent0):
+    SYSTEM_PROMPT = """你是 Planner，團隊的規劃者。
 
 職責：
 1. 分析用戶輸入，理解任務意圖
-2. 制定執行計劃（包含具體的 shell 命令）
+2. 制定執行計劃（步驟列表）
 3. 匯總並檢視所有 Evaluator 的評估結果
 4. 決定下一輪 plan（任務已完成 / 繼續優化 / 放棄任務）
 
-重要規則：
-- 用 <plan> 標籤輸出你的計劃
-- 用 <analysis> 標籤輸出任務分析
-- 用 <steps> 標籤輸出執行步驟（每個步驟必須用 <shell> 標籤包住命令）
-- 用 <decision> 標籤輸出你的決定
-- 任務已完成用 <end/> 結束
-- 放棄任務用 <abandon/> 並說明原因"""
+重要規則（必須嚴格遵守）：
+- 用 <plan> 標籤輸出你的計劃，格式如下：
+  <plan>
+    <analysis>任務分析...</analysis>
+    <steps>
+      <step>步驟 1 描述</step>
+      <step>步驟 2 描述</step>
+    </steps>
+  </plan>
+- 如果沒有步驟，<steps> 可以為空，但 <plan> 標籤必須存在
+- 用 <decision> 標籤輸出你的決定：<decision>complete</decision> 或 <decision>continue</decision> 或 <decision>abandon</decision>
+- 任務已完成用 <end/> 結束"""
 
-async def plan_task(user_input: str, context: str, feedback: str = None) -> Plan:
-    """Plan task analysis and execution plan"""
-    feedback_section = f"\n\n<feedback>{feedback}</feedback>" if feedback else ""
-    
-    prompt = f"""<context>{context}</context>
 
-<user>{user_input}</user>{feedback_section}
-
-請分析任務並制定執行計劃。每個步驟必須用 <shell> 標籤包住實際要執行的命令："""
-
-    response = await call_ollama(prompt, PLANNER_SYSTEM)
-    
-    if DEBUG:
-        print(f"[DEBUG] Planner response: {response[:300]}")
-    
-    plan = Plan()
-    
-    analysis_match = re.search(r'<analysis>(.*?)</analysis>', response, re.DOTALL)
-    if analysis_match:
-        plan.analysis = analysis_match.group(1).strip()
-    
-    step_matches = re.findall(r'<step>(.*?)</step>', response, re.DOTALL)
-    plan.steps = [s.strip() for s in step_matches]
-    
-    if not plan.steps:
-        shell_matches = re.findall(r'<shell>(.*?)</shell>', response, re.DOTALL)
-        plan.steps = [f"<shell>{s.strip()}</shell>" for s in shell_matches]
-    
-    if not plan.steps:
-        plan.steps = ["<shell>echo 'No command generated'</shell>"]
-    
-    decision_match = re.search(r'<decision>(.*?)</decision>', response, re.DOTALL)
-    if decision_match:
-        plan.decision = decision_match.group(1).strip()
-    
-    append_memory("planner", 0, f"plan: {plan.analysis[:100]}", current_iteration)
-    
-    return plan
-
-async def review_evaluations(evaluations: list, plan: Plan) -> dict:
-    """Review and汇总 all Evaluator results"""
-    all_passed = all(e.get("passed", False) for e in evaluations)
-    all_results = []
-    
-    for e in evaluations:
-        all_results.append({
-            "evaluator_id": e.get("evaluator_id", 0),
-            "passed": e.get("passed", False),
-            "score": e.get("score", 0),
-            "feedback": e.get("feedback", "")
-        })
-    
-    issues = []
-    for e in evaluations:
-        issues.extend(e.get("issues", []))
-    
-    consensus = "PASS" if all_passed else "FAIL"
-    
-    if all_passed:
-        plan.decision = "complete"
-    
-    return {
-        "overall": consensus,
-        "all_passed": all_passed,
-        "results": all_results,
-        "issues": issues
-    }
-
-async def decide_next_plan(review_result: dict, plan: Plan, iteration: int) -> tuple[str, Plan]:
-    """Decide next plan based on evaluation results"""
-    if review_result["all_passed"]:
-        return "complete", plan
-    
-    if iteration >= MAX_ITERATIONS - 1:
-        append_memory("planner", 0, f"abandon: max iterations reached", iteration)
-        return "abandon", plan
-    
-    feedback = "\n".join(review_result["issues"])
-    plan.feedback = feedback
-    
-    prompt = f"""根據以下評估反饋，請制定改進計劃：
-
-<previous_plan>
-  analysis: {plan.analysis}
-  steps: {plan.steps}
-</previous_plan>
-
-<feedback>{feedback}</feedback>
-
-請用以下格式輸出改進計劃（每個步驟必須用 <shell> 標籤包住命令）：
-<plan>
-  <analysis>任務分��</analysis>
-  <steps>
-    <step><shell>命令1</shell></step>
-    <step><shell>命令2</shell></step>
-  </steps>
-  <decision>continue</decision>
-</plan>"""
-
-    response = await call_ollama(prompt, PLANNER_SYSTEM)
-    
-    if DEBUG:
-        print(f"[DEBUG] Planner improve response: {response[:300]}")
-    
-    new_plan = Plan()
-    new_plan.decision = "continue"
-    
-    analysis_match = re.search(r'<analysis>(.*?)</analysis>', response, re.DOTALL)
-    if analysis_match:
-        new_plan.analysis = analysis_match.group(1).strip()
-    
-    step_matches = re.findall(r'<step>(.*?)</step>', response, re.DOTALL)
-    new_plan.steps = []
-    for s in step_matches:
-        step = s.strip()
-        if '<shell>' in step:
-            new_plan.steps.append(step)
-        else:
-            new_plan.steps.append(f"<shell>{step}</shell>")
-    
-    if not new_plan.steps:
-        shell_matches = re.findall(r'<shell>(.*?)</shell>', response, re.DOTALL)
-        new_plan.steps = [f"<shell>{s.strip()}</shell>" for s in shell_matches]
-    
-    new_plan.feedback = feedback
-    
-    append_memory("planner", 0, f"迭代 {iteration}: {new_plan.analysis[:50]}", iteration)
-    
-    return "continue", new_plan
-
-# ─── Generator ───
-
-GENERATOR_SYSTEM = """你是 Generator，團隊的執行者。
+class Generator(Agent0):
+    SYSTEM_PROMPT = """你是 Generator，團隊的執行者。
 
 職責：
 1. 按照 Planner 的計劃執行操作
 2. 調用工具完成任務
 3. 報告執行結果
 
-重要規則：
-- Planner 已經用 <shell> 標籤包住命令，你只需要執行它們
-- 用 <output> 標籤報告結果
+重要規則（必須嚴格遵守）：
+- 用 <shell> 標籤執行命令，格式：<shell>你的命令</shell>
+- 可以輸出多個 <shell> 標籤來執行多個命令
+- 用 <output> 標籤報告執行結果：<output>結果描述</output>
 - 完成後用 <done/> 結束"""
 
-async def execute_plan(plan: Plan, context: str, generator_id: int = 0) -> dict:
-    """Execute plan using Agent0"""
-    agent = get_agent()
-    outputs = []
-    all_output = ""
-    
-    for i, step in enumerate(plan.steps):
-        cmd_match = re.search(r'<shell>(.*?)</shell>', step, re.DOTALL)
-        if not cmd_match:
-            output = "No shell command found"
-            outputs.append({"step_index": i, "command": "", "output": output, "success": False})
-            all_output += f"\n=== 步驟 {i+1} ===\n{output}\n"
-            continue
-        
-        cmd = cmd_match.group(1).strip()
-        
-        returncode, output = await agent.execute_shell(cmd)
-        
-        outputs.append({
-            "step_index": i,
-            "command": cmd,
-            "output": output,
-            "success": returncode == 0
-        })
-        all_output += f"\n=== 步驟 {i+1} ===\n$ {cmd}\n\n結果：{output}\n"
-    
-    all_outputs_text = "\n".join([
-        f"步驟 {o['step_index']+1}: {o['output'][:200]}"
-        for o in outputs
-    ])
-    append_memory("generator", generator_id, all_outputs_text, current_iteration)
-    
-    write_shared(f"output_{generator_id}.txt", all_output)
-    
-    return {
-        "generator_id": generator_id,
-        "success": all(o["success"] for o in outputs),
-        "outputs": outputs,
-        "full_output": all_output
-    }
 
-# ─── Evaluator ───
-
-EVALUATOR_SYSTEM = """你是 Evaluator，團隊的評估者。
+class Evaluator(Agent0):
+    SYSTEM_PROMPT = """你是 Evaluator，團隊的評估者。
 
 職責：
 1. 評估 Generator 的輸出是否滿足要求
 2. 提供具體的反饋
 3. 決定是否需要重試
 
-重要規則：
-- 用 <evaluation> 標籤輸出評估結果
-- <result> 為 PASS 或 FAIL
-- <score> 為 0-10 的評分
-- <feedback> 提供具體改進建議
-- 如果 PASS，用 <end/> 結束"""
+重要規則（必須嚴格遵守）：
+- 用 <evaluation> 標籤輸出評估結果，格式如下：
+  <evaluation>
+    <result>PASS</result>
+    <score>8</score>
+    <feedback>評估說明...</feedback>
+  </evaluation>
+- <result> 必須是 PASS 或 FAIL（大小寫不拘）
+- 如果是 PASS，用 <end/> 結束
+- 如果是 FAIL，必須提供具體的 <feedback> 說明問題和改進建議"""
 
-async def evaluate_output(user_input: str, generator_outputs: list, plan: Plan, evaluator_id: int = 0) -> dict:
-    """Evaluate Generator output"""
-    outputs_text = "\n".join([
-        f"Generator {o['generator_id']}:\n{o['full_output'][:500]}"
+
+async def plan_task(planner: Planner, user_input: str, context: str, feedback: str = None) -> dict:
+    feedback_section = f"\n\n<feedback>{feedback}</feedback>" if feedback else ""
+    
+    prompt = f"""<user_input>{user_input}</user_input>
+<context>{context}</context>{feedback_section}
+
+請分析任務並制定執行計劃。嚴格使用以下格式：
+
+<plan>
+  <analysis>任務分析...</analysis>
+  <steps>
+    <step>步驟 1 描述</step>
+    <step>步驟 2 描述</step>
+  </steps>
+</plan>"""
+
+    response = await planner.call_ollama(prompt, planner.SYSTEM_PROMPT)
+    print(f"\n📋 Planner 回應: {response[:300]}...")
+    
+    plan_match = re.search(r'<plan>(.*?)</plan>', response, re.DOTALL)
+    analysis_match = re.search(r'<analysis>(.*?)</analysis>', response, re.DOTALL)
+    steps_match = re.search(r'<steps>(.*?)</steps>', response, re.DOTALL)
+    
+    steps = []
+    if steps_match:
+        steps = [s.strip() for s in re.findall(r'<step>(.*?)</step>', steps_match.group(1), re.DOTALL)]
+    
+    return {
+        "raw": response,
+        "analysis": analysis_match.group(1).strip() if analysis_match else "",
+        "steps": steps if steps else []
+    }
+
+
+async def execute_plan(generator: Generator, plan: dict, context: str, generator_id: int) -> dict:
+    if not plan.get("steps"):
+        return {
+            "generator_id": generator_id,
+            "success": False,
+            "output": "無執行步驟",
+            "steps_output": []
+        }
+    
+    steps_output = []
+    all_outputs = []
+    
+    for i, step in enumerate(plan["steps"]):
+        print(f"\n  [Generator {generator_id}] 執行步驟 {i+1}: {step}")
+        
+        step_outputs = []
+        
+        prompt = f"""<context>{context}</context>
+<plan>
+  <analysis>{plan.get('analysis', '')}</analysis>
+  <steps>{''.join(f'<step>{s}</step>' for s in plan['steps'])}</steps>
+</plan>
+<current_step>{step}</current_step>
+
+執行此步驟。嚴格使用以下格式：
+- 用 <shell> 標籤輸出命令：<shell>你的命令</shell>
+- 完成後用 <done/> 結束"""
+
+        response = await generator.call_ollama(prompt, generator.SYSTEM_PROMPT)
+        
+        current_response = response
+        
+        while True:
+            if "<done/>" in current_response:
+                before_done = current_response.split("<done/>")[0].strip()
+                if before_done:
+                    all_outputs.append(f"步驟 {i+1}: {before_done}")
+                break
+            
+            shell_matches = re.findall(r'<shell>(.+?)</shell>', current_response, re.DOTALL)
+            if not shell_matches:
+                if current_response.strip():
+                    all_outputs.append(f"步驟 {i+1}: {current_response.strip()}")
+                break
+            
+            for cmd in shell_matches:
+                cmd = cmd.strip()
+                returncode, output = await generator.execute_shell(cmd)
+                step_outputs.append({"command": cmd, "output": output, "returncode": returncode})
+                all_outputs.append(f"步驟 {i+1}: {cmd}\n{output}")
+            
+            follow_up = f"""<context>{context}</context>
+<previous_response>{current_response}</previous_response>
+<output>{chr(10).join([f'{s["command"]}: {s["output"]}' for s in step_outputs[-len(shell_matches):]])}</output>
+
+继续或完成。用 <done/> 结束。"""
+            current_response = await generator.call_ollama(follow_up, generator.SYSTEM_PROMPT)
+        
+        steps_output.append({
+            "step": step,
+            "response": response,
+            "outputs": step_outputs
+        })
+    
+    return {
+        "generator_id": generator_id,
+        "success": True,
+        "output": "\n\n".join(all_outputs),
+        "steps_output": steps_output
+    }
+
+
+async def evaluate_output(evaluator: Evaluator, user_input: str, generator_outputs: list, plan: dict, evaluator_id: int) -> dict:
+    outputs_text = "\n\n---\n\n".join([
+        f"Generator {o['generator_id']}:\n{o['output']}"
         for o in generator_outputs
     ])
     
-    prompt = f"""<task>{user_input}</task>
+    prompt = f"""<user_input>{user_input}</user_input>
+<plan>
+  <analysis>{plan.get('analysis', '')}</analysis>
+  <steps>{''.join(f'<step>{s}</step>' for s in plan.get('steps', []))}</steps>
+</plan>
+<generator_outputs>{outputs_text}</generator_outputs>
 
-<plan>{plan.analysis}</plan>
+請評估輸出是否滿足要求。嚴格使用以下格式：
 
-<generator_outputs>
-{outputs_text}
-</generator_outputs>
+<evaluation>
+  <result>PASS</result>
+  <score>8</score>
+  <feedback>評估說明...</feedback>
+</evaluation>
 
-請評估以上輸出是否滿足任務要求："""
+<result> 必須是 PASS 或 FAIL。"""
 
-    response = await call_ollama(prompt, EVALUATOR_SYSTEM)
+    response = await evaluator.call_ollama(prompt, evaluator.SYSTEM_PROMPT)
+    print(f"\n  [Evaluator {evaluator_id}] 評估結果: {response[:200]}...")
     
-    if DEBUG:
-        print(f"[DEBUG] Evaluator response: {response[:300]}")
-    
-    result_match = re.search(r'<result>(.*?)</result>', response, re.DOTALL)
-    passed = result_match.group(1).strip().upper() == "PASS" if result_match else False
-    
-    score_match = re.search(r'<score>(\d+)</score>', response, re.DOTALL)
-    score = int(score_match.group(1)) if score_match else 5
-    
+    result_match = re.search(r'<result>(PASS|FAIL)</result>', response, re.IGNORECASE)
     feedback_match = re.search(r'<feedback>(.*?)</feedback>', response, re.DOTALL)
-    feedback = feedback_match.group(1).strip() if feedback_match else ""
+    score_match = re.search(r'<score>(\d+)</score>', response)
     
-    issue_match = re.findall(r'<issue>(.*?)</issue>', response, re.DOTALL)
-    issues = [i.strip() for i in issue_match]
-    
-    append_memory("evaluator", evaluator_id, f"評估: {feedback[:100]}", current_iteration)
-    write_shared(f"evaluation_{evaluator_id}.txt", response)
+    passed = result_match and result_match.group(1).upper() == "PASS"
     
     return {
         "evaluator_id": evaluator_id,
         "passed": passed,
-        "score": score,
-        "feedback": feedback,
-        "issues": issues,
-        "raw_response": response
+        "score": int(score_match.group(1)) if score_match else (8 if passed else 0),
+        "raw": response,
+        "feedback": feedback_match.group(1).strip() if feedback_match else ""
     }
 
-# ─── Team Loop ───
 
-def log_team(action: str, data: str = ""):
-    """Log team action"""
-    timestamp = datetime.now().strftime("%H:%M:%S")
-    log_line = f"[{timestamp}] {action}: {data}"
-    append_shared("teamlog.txt", log_line)
-    team_log.append({"time": timestamp, "action": action, "data": data})
-    if DEBUG:
-        print(f"[DEBUG] {log_line}")
-
-async def run_team_loop(user_input: str) -> tuple[str, list]:
-    """Main team loop"""
-    global current_iteration
-    current_iteration = 0
-    team_log.clear()
-    
-    log_team("START", user_input[:50])
-    
-    context = build_context()
-    plan = None
-    generators_outputs = []
-    evaluators_results = []
-    
-    while current_iteration < MAX_ITERATIONS:
-        log_team(f"ITERATION", str(current_iteration + 1))
-        
-        feedback = None
-        if plan and plan.feedback:
-            feedback = plan.feedback
-        
-        plan = await plan_task(user_input, context, feedback)
-        
-        if DEBUG:
-            print(f"[DEBUG] Plan: {plan.analysis[:100]}")
-            print(f"[DEBUG] Steps: {len(plan.steps)}")
-        
-        if plan.decision == "complete":
-            log_team("COMPLETE", "task completed")
-            break
-        
-        if plan.decision == "abandon":
-            log_team("ABANDON", plan.analysis[:50])
-            break
-        
-        generators_outputs = []
-        for gen_id in range(NUM_GENERATORS):
-            output = await execute_plan(plan, context, gen_id)
-            generators_outputs.append(output)
-        
-        evaluators_results = []
-        for eval_id in range(NUM_EVALUATORS):
-            result = await evaluate_output(user_input, generators_outputs, plan, eval_id)
-            evaluators_results.append(result)
-        
-        review_result = await review_evaluations(evaluators_results, plan)
-        
-        decision, new_plan = await decide_next_plan(review_result, plan, current_iteration)
-        
-        if decision == "complete":
-            log_team("COMPLETE", "all evaluations passed")
-            plan = new_plan
-            break
-        
-        if decision == "abandon":
-            log_team("ABANDON", "max iterations reached")
-            plan = new_plan
-            break
-        
-        plan = new_plan
-        current_iteration += 1
-    
-    final_output = "\n".join([
-        f"Generator {o['generator_id']}: {o['full_output'][:300]}"
-        for o in generators_outputs
+async def review_evaluations(planner: Planner, evaluations: list, plan: dict) -> dict:
+    eval_text = "\n\n".join([
+        f"Evaluator {e['evaluator_id']}: PASS={e['passed']}, feedback={e['feedback']}"
+        for e in evaluations
     ])
     
-    log_team("END", "")
-    
-    return final_output, team_log
+    prompt = f"""<plan>
+  <analysis>{plan.get('analysis', '')}</analysis>
+  <steps>{''.join(f'<step>{s}</step>' for s in plan.get('steps', []))}</steps>
+</plan>
+<evaluations>{eval_text}</evaluations>
 
-# ─── Main ───
+請匯總所有評估結果，用 <decision> 標籤輸出決定：
+- <decision>complete</decision>：所有 evaluator 通過，任務完成
+- <decision>continue</decision>：需要繼續優化
+- <decision>abandon</decision>：無法完成
+
+同時用 <summary> 標籤輸出匯總說明。"""
+
+    response = await planner.call_ollama(prompt, planner.SYSTEM_PROMPT)
+    
+    decision_match = re.search(r'<decision>(complete|continue|abandon)</decision>', response, re.IGNORECASE)
+    summary_match = re.search(r'<summary>(.*?)</summary>', response, re.DOTALL)
+    
+    decision = decision_match.group(1).lower() if decision_match else "continue"
+    
+    return {
+        "decision": decision,
+        "summary": summary_match.group(1).strip() if summary_match else "",
+        "raw": response,
+        "all_passed": all(e["passed"] for e in evaluations)
+    }
+
+
+async def run_team_loop(user_input: str, num_generators: int = NUM_GENERATORS, num_evaluators: int = NUM_EVALUATORS, max_iterations: int = MAX_ITERATIONS, debug: bool = False) -> tuple[str, list]:
+    planner = Planner(workspace=WORKSPACE, model=MODEL, reviewer_model=MODEL)
+    generators = [Generator(workspace=WORKSPACE, model=MODEL, reviewer_model=MODEL) for _ in range(num_generators)]
+    evaluators = [Evaluator(workspace=WORKSPACE, model=MODEL, reviewer_model=MODEL) for _ in range(num_evaluators)]
+    
+    team_log = []
+    iteration = 0
+    last_feedback = None
+    
+    print(f"\n{'='*50}")
+    print(f"Team Loop 開始 - Generators: {num_generators}, Evaluators: {num_evaluators}")
+    print(f"{'='*50}")
+    
+    while iteration < max_iterations:
+        print(f"\n--- 迭代 {iteration + 1}/{max_iterations} ---")
+        
+        if debug:
+            print(f"[DEBUG] Planner 制定計劃...")
+        
+        plan = await plan_task(planner, user_input, planner.build_context(), last_feedback)
+        
+        if debug:
+            print(f"[DEBUG] 計劃: {plan.get('analysis', '')[:100]}...")
+            print(f"[DEBUG] 步驟數: {len(plan.get('steps', []))}")
+        
+        generator_outputs = []
+        for i, gen in enumerate(generators):
+            print(f"\n▶ Generator {i} 執行中...")
+            output = await execute_plan(gen, plan, gen.build_context(), i)
+            generator_outputs.append(output)
+            print(f"✓ Generator {i} 完成")
+        
+        evaluators_results = []
+        for i, ev in enumerate(evaluators):
+            print(f"\n▶ Evaluator {i} 評估中...")
+            result = await evaluate_output(ev, user_input, generator_outputs, plan, i)
+            evaluators_results.append(result)
+            print(f"✓ Evaluator {i} 評估: {'PASS' if result['passed'] else 'FAIL'}")
+        
+        review = await review_evaluations(planner, evaluators_results, plan)
+        
+        team_log.append({
+            "iteration": iteration + 1,
+            "plan": plan,
+            "generator_outputs": generator_outputs,
+            "evaluators_results": evaluators_results,
+            "review": review
+        })
+        
+        print(f"\n📊 Planner 決定: {review['decision']}")
+        
+        if review["decision"] == "complete":
+            final_output = generator_outputs[0]["output"] if generator_outputs else "任務完成"
+            return final_output, team_log
+        
+        if review["decision"] == "abandon":
+            return f"任務無法完成：{review['summary']}", team_log
+        
+        last_feedback = review["summary"]
+        iteration += 1
+    
+    return "達到最大迭代次數", team_log
+
 
 def main():
-    global NUM_GENERATORS, NUM_EVALUATORS, MAX_ITERATIONS, DEBUG, current_task_id
-    
-    parser = argparse.ArgumentParser(description="Agent0Team")
-    parser.add_argument("--generators", type=int, default=1, help="Number of generators")
-    parser.add_argument("--evaluators", type=int, default=1, help="Number of evaluators")
-    parser.add_argument("--max-iterations", type=int, default=3, help="Max iterations")
-    parser.add_argument("--debug", action="store_true", help="Debug mode")
+    parser = argparse.ArgumentParser(description="Agent0 Team")
+    parser.add_argument("--generators", "-g", type=int, default=NUM_GENERATORS, help="Generator 數量")
+    parser.add_argument("--evaluators", "-e", type=int, default=NUM_EVALUATORS, help="Evaluator 數量")
+    parser.add_argument("--max-iterations", "-i", type=int, default=MAX_ITERATIONS, help="最大迭代次數")
+    parser.add_argument("--debug", "-d", action="store_true", help="除錯模式")
     args = parser.parse_args()
     
-    NUM_GENERATORS = args.generators
-    NUM_EVALUATORS = args.evaluators
-    MAX_ITERATIONS = args.max_iterations
-    DEBUG = args.debug
-    
     os.makedirs(WORKSPACE, exist_ok=True)
-    os.makedirs(MEMORY_DIR, exist_ok=True)
-    os.makedirs(SHARED_DIR, exist_ok=True)
     
-    current_task_id = datetime.now().strftime("%Y%m%d_%H%M%S")
-    
-    print(f"Agent0Team - {MODEL}")
-    print(f"Generators: {NUM_GENERATORS}, Evaluators: {NUM_EVALUATORS}, Max Iterations: {MAX_ITERATIONS}")
+    print(f"Agent0 Team - {MODEL}")
+    print(f"Generators: {args.generators}, Evaluators: {args.evaluators}, Max Iterations: {args.max_iterations}")
     print(f"工作區：{WORKSPACE}")
-    print(f"Task ID: {current_task_id}")
-    print("指令：/quit、/memory（顯示關鍵資訊）\n")
+    print("指令：/quit、/memory\n")
     
     while True:
         try:
@@ -615,23 +573,25 @@ def main():
             print("再見！")
             break
         if user_input.lower() == "/memory":
-            print(f"關鍵資訊：{key_info}")
-            print(f"團隊記憶：{team_log[-5:]}")
+            print("團隊記憶功能開發中...")
             continue
         
-        response, log = asyncio.run(run_team_loop(user_input))
+        response, team_log = asyncio.run(run_team_loop(
+            user_input,
+            num_generators=args.generators,
+            num_evaluators=args.evaluators,
+            max_iterations=args.max_iterations,
+            debug=args.debug
+        ))
         
-        print(f"\n🤖 [任務完成]\n{response[:500]}\n")
+        print(f"\n{'='*50}")
+        print(f"🤖 最終回覆:")
+        print(f"{response}")
+        print(f"{'='*50}")
         
-        if DEBUG:
-            print("═══ 團隊執行記錄 ═══")
-            for entry in log[-10:]:
-                print(f"  [{entry['time']}] {entry['action']}: {entry['data'][:50]}")
-            print("═══")
-        
-        update_memory(user_input, response[:200])
-        if response:
-            asyncio.run(extract_key_info(user_input, response[:200]))
+        if args.debug:
+            print(f"\n📊 團隊執行記錄：{len(team_log)} 次迭代")
+
 
 if __name__ == "__main__":
     main()

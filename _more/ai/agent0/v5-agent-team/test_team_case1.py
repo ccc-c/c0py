@@ -1,75 +1,58 @@
 #!/usr/bin/env python3
-# test_team_case1.py - Simple test case 1
-# Test: Planner x 1, Generator x 3, Evaluator x 3
-
+# test_team_case1.py - 測試個案 1: FastAPI + SQLite 網誌系統
+import agent0team
 import asyncio
-import agent0team as team
 import os
-import tempfile
-import shutil
+import sys
 
-TEST_DIR = None
+PROJECT_DIR = os.path.dirname(os.path.abspath(__file__))
 
-def setup():
-    global TEST_DIR
-    TEST_DIR = os.path.join(os.getcwd(), '.agent0')
-    os.makedirs(TEST_DIR, exist_ok=True)
-    
-    team.WORKSPACE = TEST_DIR
-    team.MEMORY_DIR = os.path.join(team.WORKSPACE, 'team', 'memory')
-    team.SHARED_DIR = os.path.join(team.WORKSPACE, 'team', 'shared')
-    team.NUM_GENERATORS = 3
-    team.NUM_EVALUATORS = 3
-    team.MAX_ITERATIONS = 1
-    team.DEBUG = False
-    
-    os.makedirs(team.WORKSPACE, exist_ok=True)
-    os.makedirs(team.MEMORY_DIR, exist_ok=True)
-    os.makedirs(team.SHARED_DIR, exist_ok=True)
-    
-    print(f"Config: GEN={team.NUM_GENERATORS}, EVAL={team.NUM_EVALUATORS}, MAX={team.MAX_ITERATIONS}")
 
-def cleanup():
-    pass  # Keep files for inspection
+async def test_blog_system():
+    print("=" * 60)
+    print("測試個案 1: FastAPI + SQLite 網誌系統")
+    print("=" * 60)
+    
+    user_input = "請用 fastapi + sqlite 寫一個簡易的網誌系統，放在 ./blog 目錄下"
+    
+    response, team_log = await agent0team.run_team_loop(
+        user_input,
+        num_generators=1,
+        num_evaluators=1,
+        max_iterations=3,
+        debug=True
+    )
+    
+    print("\n" + "=" * 60)
+    print("執行結果:")
+    print("=" * 60)
+    print(f"回覆: {response[:500]}...")
+    print(f"\n迭代次數: {len(team_log)}")
+    
+    for i, log in enumerate(team_log):
+        print(f"\n--- 迭代 {i+1} ---")
+        plan = log.get("plan", {})
+        print(f"Planner 分析: {plan.get('analysis', '')[:200]}...")
+        print(f"Planner 步驟數: {len(plan.get('steps', []))}")
+        
+        for gen in log.get("generator_outputs", []):
+            print(f"Generator {gen['generator_id']} 輸出: {gen['output'][:200] if gen['output'] else '（無）'}...")
+        
+        for ev in log.get("evaluators_results", []):
+            print(f"Evaluator {ev['evaluator_id']}: PASS={ev['passed']}, feedback={ev.get('feedback', '')[:100]}...")
+        
+        print(f"Planner 決定: {log.get('review', {}).get('decision', 'unknown')}")
+    
+    blog_dir = os.path.join(PROJECT_DIR, "blog")
+    if os.path.exists(blog_dir):
+        files = os.listdir(blog_dir)
+        print(f"\n✓ blog 目錄已建立，包含 {len(files)} 個檔案: {files[:5]}...")
+    else:
+        print(f"\n✗ blog 目錄不存在")
+    
+    return True
 
-async def test():
-    print("Test: Analyze Python code structure")
-    
-    team.clear_shared()
-    team.team_log.clear()
-    team.current_iteration = 0
-    team.MAX_ITERATIONS = 2  # More iterations for complex task
-    
-    task = "分析 v4-agent-team 目錄中的 Python 程式碼結構，並產生一份結構報告"
-    print(f"Task: {task}")
-    
-    result, log = await team.run_team_loop(task)
-    
-    print(f"Result: {result[:100] if result else 'None'}...")
-    print(f"Log entries: {len(log)}")
-    
-    # Check outputs
-    for i in range(team.NUM_GENERATORS):
-        output = team.read_shared(f'output_{i}.txt')
-        print(f"Generator {i}: {len(output)} chars")
-    
-    # Check evaluations
-    for i in range(team.NUM_EVALUATORS):
-        eval_result = team.read_shared(f'evaluation_{i}.txt')
-        print(f"Evaluator {i}: {len(eval_result)} chars")
-    
-    print("Test passed!")
-
-def main():
-    setup()
-    try:
-        asyncio.run(test())
-    except Exception as e:
-        print(f"Error: {e}")
-        import traceback
-        traceback.print_exc()
-    finally:
-        cleanup()
 
 if __name__ == "__main__":
-    main()
+    success = asyncio.run(test_blog_system())
+    sys.exit(0 if success else 1)

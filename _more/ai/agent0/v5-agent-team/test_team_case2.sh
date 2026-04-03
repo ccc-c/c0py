@@ -1,12 +1,12 @@
 #!/bin/bash
-# test_team_case1.sh - 執行測試個案 1
+# test_team_case2.sh - 執行測試個案 2
 
 cd "$(dirname "$0")"
 
 echo "========================================"
-echo "測試個案 1: FastAPI + SQLite 網誌系統"
+echo "測試個案 2: 伊朗戰情報告"
 echo "========================================"
 
-python test_team_case1.py "$@"
+python test_team_case2.py "$@"
 
 exit $?
