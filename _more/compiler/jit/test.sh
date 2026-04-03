@@ -1,0 +1,1 @@
+gcc -o jit jit.c -ldl && ./jit
