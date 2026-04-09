@@ -62,28 +62,30 @@ declare void @__c0c_emit(ptr, ptr, ...)
 
 define internal i8 @cur(ptr %t0) {
 entry:
-  %t1 = load ptr, ptr %t0
-  %t2 = load ptr, ptr %t0
-  %t3 = ptrtoint ptr %t2 to i64
-  %t4 = getelementptr ptr, ptr %t1, i64 %t3
-  %t5 = load ptr, ptr %t4
-  %t6 = ptrtoint ptr %t5 to i64
-  %t7 = trunc i64 %t6 to i8
-  ret i8 %t7
+  %t1 = getelementptr i8, ptr %t0, i64 0
+  %t2 = load i64, ptr %t1
+  %t3 = getelementptr i8, ptr %t0, i64 0
+  %t4 = load i64, ptr %t3
+  %t5 = inttoptr i64 %t2 to ptr
+  %t6 = getelementptr ptr, ptr %t5, i64 %t4
+  %t7 = load ptr, ptr %t6
+  %t8 = ptrtoint ptr %t7 to i64
+  %t9 = trunc i64 %t8 to i8
+  ret i8 %t9
 L0:
   ret i8 0
 }
 
 define internal i8 @peek1(ptr %t0) {
 entry:
-  %t1 = load ptr, ptr %t0
-  %t2 = load ptr, ptr %t0
-  %t4 = ptrtoint ptr %t2 to i64
-  %t5 = sext i32 1 to i64
-  %t6 = inttoptr i64 %t4 to ptr
-  %t3 = getelementptr i8, ptr %t6, i64 %t5
-  %t7 = ptrtoint ptr %t3 to i64
-  %t8 = getelementptr ptr, ptr %t1, i64 %t7
+  %t1 = getelementptr i8, ptr %t0, i64 0
+  %t2 = load i64, ptr %t1
+  %t3 = getelementptr i8, ptr %t0, i64 0
+  %t4 = load i64, ptr %t3
+  %t6 = sext i32 1 to i64
+  %t5 = add i64 %t4, %t6
+  %t7 = inttoptr i64 %t2 to ptr
+  %t8 = getelementptr ptr, ptr %t7, i64 %t5
   %t9 = load ptr, ptr %t8
   %t10 = ptrtoint ptr %t9 to i64
   %t11 = trunc i64 %t10 to i8
@@ -95,41 +97,46 @@ L0:
 define internal i8 @advance(ptr %t0) {
 entry:
   %t1 = alloca i64
-  %t2 = load ptr, ptr %t0
-  %t3 = load ptr, ptr %t0
-  %t5 = ptrtoint ptr %t3 to i64
-  %t4 = add i64 %t5, 1
-  store i64 %t4, ptr %t0
-  %t6 = ptrtoint ptr %t3 to i64
-  %t7 = getelementptr ptr, ptr %t2, i64 %t6
-  %t8 = load ptr, ptr %t7
-  store ptr %t8, ptr %t1
-  %t9 = load i64, ptr %t1
-  %t11 = sext i32 %t9 to i64
-  %t12 = sext i32 10 to i64
-  %t10 = icmp eq i64 %t11, %t12
-  %t13 = zext i1 %t10 to i64
-  %t14 = icmp ne i64 %t13, 0
-  br i1 %t14, label %L0, label %L1
+  %t2 = getelementptr i8, ptr %t0, i64 0
+  %t3 = load i64, ptr %t2
+  %t4 = getelementptr i8, ptr %t0, i64 0
+  %t5 = load i64, ptr %t4
+  %t6 = add i64 %t5, 1
+  %t7 = getelementptr i8, ptr %t0, i64 0
+  store i64 %t6, ptr %t7
+  %t8 = inttoptr i64 %t3 to ptr
+  %t9 = getelementptr ptr, ptr %t8, i64 %t5
+  %t10 = load ptr, ptr %t9
+  store ptr %t10, ptr %t1
+  %t11 = load i64, ptr %t1
+  %t13 = sext i32 %t11 to i64
+  %t14 = sext i32 10 to i64
+  %t12 = icmp eq i64 %t13, %t14
+  %t15 = zext i1 %t12 to i64
+  %t16 = icmp ne i64 %t15, 0
+  br i1 %t16, label %L0, label %L1
 L0:
-  %t15 = load ptr, ptr %t0
-  %t17 = ptrtoint ptr %t15 to i64
-  %t16 = add i64 %t17, 1
-  store i64 %t16, ptr %t0
-  %t18 = sext i32 1 to i64
-  store i64 %t18, ptr %t0
+  %t17 = getelementptr i8, ptr %t0, i64 0
+  %t18 = load i64, ptr %t17
+  %t19 = add i64 %t18, 1
+  %t20 = getelementptr i8, ptr %t0, i64 0
+  store i64 %t19, ptr %t20
+  %t21 = getelementptr i8, ptr %t0, i64 0
+  %t22 = sext i32 1 to i64
+  store i64 %t22, ptr %t21
   br label %L2
 L1:
-  %t19 = load ptr, ptr %t0
-  %t21 = ptrtoint ptr %t19 to i64
-  %t20 = add i64 %t21, 1
-  store i64 %t20, ptr %t0
+  %t23 = getelementptr i8, ptr %t0, i64 0
+  %t24 = load i64, ptr %t23
+  %t25 = add i64 %t24, 1
+  %t26 = getelementptr i8, ptr %t0, i64 0
+  store i64 %t25, ptr %t26
   br label %L2
 L2:
-  %t22 = load i64, ptr %t1
-  %t23 = sext i32 %t22 to i64
-  %t24 = trunc i64 %t23 to i8
-  ret i8 %t24
+  %t27 = load i64, ptr %t1
+  %t28 = sext i32 %t27 to i64
+  %t29 = trunc i64 %t28 to i8
+  ret i8 %t29
 L3:
   ret i8 0
 }
@@ -614,29 +621,35 @@ L0:
   br label %L2
 L2:
   %t12 = load ptr, ptr %t2
-  store ptr %t0, ptr %t12
-  %t13 = load ptr, ptr %t2
-  store ptr %t1, ptr %t13
+  %t13 = getelementptr i8, ptr %t12, i64 0
+  store ptr %t0, ptr %t13
   %t14 = load ptr, ptr %t2
-  %t15 = sext i32 1 to i64
-  store i64 %t15, ptr %t14
+  %t15 = getelementptr i8, ptr %t14, i64 0
+  store ptr %t1, ptr %t15
   %t16 = load ptr, ptr %t2
-  %t17 = sext i32 1 to i64
-  store i64 %t17, ptr %t16
-  %t18 = load ptr, ptr %t2
-  ret ptr %t18
+  %t17 = getelementptr i8, ptr %t16, i64 0
+  %t18 = sext i32 1 to i64
+  store i64 %t18, ptr %t17
+  %t19 = load ptr, ptr %t2
+  %t20 = getelementptr i8, ptr %t19, i64 0
+  %t21 = sext i32 1 to i64
+  store i64 %t21, ptr %t20
+  %t22 = load ptr, ptr %t2
+  ret ptr %t22
 L3:
   ret ptr null
 }
 
 define dso_local void @lexer_free(ptr %t0) {
 entry:
-  %t1 = load ptr, ptr %t0
-  %t2 = icmp ne ptr %t1, null
-  br i1 %t2, label %L0, label %L2
+  %t1 = getelementptr i8, ptr %t0, i64 0
+  %t2 = load i64, ptr %t1
+  %t3 = icmp ne i64 %t2, 0
+  br i1 %t3, label %L0, label %L2
 L0:
-  %t3 = load ptr, ptr %t0
-  call void @token_free(ptr %t3)
+  %t4 = getelementptr i8, ptr %t0, i64 0
+  %t5 = load i64, ptr %t4
+  call void @token_free(i64 %t5)
   br label %L2
 L2:
   call void @free(ptr %t0)
@@ -645,8 +658,9 @@ L2:
 
 define dso_local void @token_free(ptr %t0) {
 entry:
-  %t1 = load ptr, ptr %t0
-  call void @free(ptr %t1)
+  %t1 = getelementptr i8, ptr %t0, i64 0
+  %t2 = load i64, ptr %t1
+  call void @free(i64 %t2)
   ret void
 }
 
@@ -833,241 +847,249 @@ define internal i64 @read_token(ptr %t0) {
 entry:
   call void @skip_ws(ptr %t0)
   %t2 = alloca i64
-  %t3 = load ptr, ptr %t0
-  store ptr %t3, ptr %t2
-  %t4 = load ptr, ptr %t0
-  store ptr %t4, ptr %t2
-  %t6 = sext i32 0 to i64
-  %t5 = inttoptr i64 %t6 to ptr
-  store ptr %t5, ptr %t2
-  %t7 = call i8 @cur(ptr %t0)
-  %t8 = sext i8 %t7 to i64
-  %t10 = icmp eq i64 %t8, 0
-  %t9 = zext i1 %t10 to i64
-  %t11 = icmp ne i64 %t9, 0
-  br i1 %t11, label %L0, label %L2
+  %t3 = getelementptr i8, ptr %t0, i64 0
+  %t4 = load i64, ptr %t3
+  %t5 = getelementptr i8, ptr %t2, i64 0
+  store i64 %t4, ptr %t5
+  %t6 = getelementptr i8, ptr %t0, i64 0
+  %t7 = load i64, ptr %t6
+  %t8 = getelementptr i8, ptr %t2, i64 0
+  store i64 %t7, ptr %t8
+  %t10 = sext i32 0 to i64
+  %t9 = inttoptr i64 %t10 to ptr
+  %t11 = getelementptr i8, ptr %t2, i64 0
+  store ptr %t9, ptr %t11
+  %t12 = call i8 @cur(ptr %t0)
+  %t13 = sext i8 %t12 to i64
+  %t15 = icmp eq i64 %t13, 0
+  %t14 = zext i1 %t15 to i64
+  %t16 = icmp ne i64 %t14, 0
+  br i1 %t16, label %L0, label %L2
 L0:
-  %t12 = sext i32 81 to i64
-  store i64 %t12, ptr %t2
-  %t13 = getelementptr [1 x i8], ptr @.str32, i64 0, i64 0
-  %t14 = call ptr @strdup(ptr %t13)
-  store ptr %t14, ptr %t2
-  %t15 = load i64, ptr %t2
-  %t16 = sext i32 %t15 to i64
-  ret i64 %t16
+  %t17 = getelementptr i8, ptr %t2, i64 0
+  %t18 = sext i32 81 to i64
+  store i64 %t18, ptr %t17
+  %t19 = getelementptr [1 x i8], ptr @.str32, i64 0, i64 0
+  %t20 = call ptr @strdup(ptr %t19)
+  %t21 = getelementptr i8, ptr %t2, i64 0
+  store ptr %t20, ptr %t21
+  %t22 = load i64, ptr %t2
+  %t23 = sext i32 %t22 to i64
+  ret i64 %t23
 L3:
   br label %L2
 L2:
-  %t17 = call i8 @cur(ptr %t0)
-  %t18 = sext i8 %t17 to i64
-  %t19 = add i64 %t18, 0
-  %t20 = call i32 @isdigit(i64 %t19)
-  %t21 = sext i32 %t20 to i64
-  %t22 = icmp ne i64 %t21, 0
-  br i1 %t22, label %L4, label %L5
+  %t24 = call i8 @cur(ptr %t0)
+  %t25 = sext i8 %t24 to i64
+  %t26 = add i64 %t25, 0
+  %t27 = call i32 @isdigit(i64 %t26)
+  %t28 = sext i32 %t27 to i64
+  %t29 = icmp ne i64 %t28, 0
+  br i1 %t29, label %L4, label %L5
 L4:
   br label %L6
 L5:
-  %t23 = call i8 @cur(ptr %t0)
-  %t24 = sext i8 %t23 to i64
-  %t26 = sext i32 46 to i64
-  %t25 = icmp eq i64 %t24, %t26
-  %t27 = zext i1 %t25 to i64
-  %t28 = icmp ne i64 %t27, 0
-  br i1 %t28, label %L7, label %L8
+  %t30 = call i8 @cur(ptr %t0)
+  %t31 = sext i8 %t30 to i64
+  %t33 = sext i32 46 to i64
+  %t32 = icmp eq i64 %t31, %t33
+  %t34 = zext i1 %t32 to i64
+  %t35 = icmp ne i64 %t34, 0
+  br i1 %t35, label %L7, label %L8
 L7:
-  %t29 = call i8 @peek1(ptr %t0)
-  %t30 = sext i8 %t29 to i64
-  %t31 = add i64 %t30, 0
-  %t32 = call i32 @isdigit(i64 %t31)
-  %t33 = sext i32 %t32 to i64
-  %t34 = icmp ne i64 %t33, 0
-  %t35 = zext i1 %t34 to i64
+  %t36 = call i8 @peek1(ptr %t0)
+  %t37 = sext i8 %t36 to i64
+  %t38 = add i64 %t37, 0
+  %t39 = call i32 @isdigit(i64 %t38)
+  %t40 = sext i32 %t39 to i64
+  %t41 = icmp ne i64 %t40, 0
+  %t42 = zext i1 %t41 to i64
   br label %L9
 L8:
   br label %L9
 L9:
-  %t36 = phi i64 [ %t35, %L7 ], [ 0, %L8 ]
-  %t37 = icmp ne i64 %t36, 0
-  %t38 = zext i1 %t37 to i64
+  %t43 = phi i64 [ %t42, %L7 ], [ 0, %L8 ]
+  %t44 = icmp ne i64 %t43, 0
+  %t45 = zext i1 %t44 to i64
   br label %L6
 L6:
-  %t39 = phi i64 [ 1, %L4 ], [ %t38, %L5 ]
-  %t40 = icmp ne i64 %t39, 0
-  br i1 %t40, label %L10, label %L12
+  %t46 = phi i64 [ 1, %L4 ], [ %t45, %L5 ]
+  %t47 = icmp ne i64 %t46, 0
+  br i1 %t47, label %L10, label %L12
 L10:
-  %t41 = alloca i64
-  %t42 = load ptr, ptr %t0
-  store ptr %t42, ptr %t41
-  %t43 = alloca i64
-  %t44 = sext i32 0 to i64
-  store i64 %t44, ptr %t43
-  %t45 = call i8 @cur(ptr %t0)
-  %t46 = sext i8 %t45 to i64
-  %t48 = sext i32 48 to i64
-  %t47 = icmp eq i64 %t46, %t48
-  %t49 = zext i1 %t47 to i64
-  %t50 = icmp ne i64 %t49, 0
-  br i1 %t50, label %L13, label %L14
+  %t48 = alloca i64
+  %t49 = getelementptr i8, ptr %t0, i64 0
+  %t50 = load i64, ptr %t49
+  store i64 %t50, ptr %t48
+  %t51 = alloca i64
+  %t52 = sext i32 0 to i64
+  store i64 %t52, ptr %t51
+  %t53 = call i8 @cur(ptr %t0)
+  %t54 = sext i8 %t53 to i64
+  %t56 = sext i32 48 to i64
+  %t55 = icmp eq i64 %t54, %t56
+  %t57 = zext i1 %t55 to i64
+  %t58 = icmp ne i64 %t57, 0
+  br i1 %t58, label %L13, label %L14
 L13:
-  %t51 = call i8 @peek1(ptr %t0)
-  %t52 = sext i8 %t51 to i64
-  %t54 = sext i32 120 to i64
-  %t53 = icmp eq i64 %t52, %t54
-  %t55 = zext i1 %t53 to i64
-  %t56 = icmp ne i64 %t55, 0
-  br i1 %t56, label %L16, label %L17
+  %t59 = call i8 @peek1(ptr %t0)
+  %t60 = sext i8 %t59 to i64
+  %t62 = sext i32 120 to i64
+  %t61 = icmp eq i64 %t60, %t62
+  %t63 = zext i1 %t61 to i64
+  %t64 = icmp ne i64 %t63, 0
+  br i1 %t64, label %L16, label %L17
 L16:
   br label %L18
 L17:
-  %t57 = call i8 @peek1(ptr %t0)
-  %t58 = sext i8 %t57 to i64
-  %t60 = sext i32 88 to i64
-  %t59 = icmp eq i64 %t58, %t60
-  %t61 = zext i1 %t59 to i64
-  %t62 = icmp ne i64 %t61, 0
-  %t63 = zext i1 %t62 to i64
+  %t65 = call i8 @peek1(ptr %t0)
+  %t66 = sext i8 %t65 to i64
+  %t68 = sext i32 88 to i64
+  %t67 = icmp eq i64 %t66, %t68
+  %t69 = zext i1 %t67 to i64
+  %t70 = icmp ne i64 %t69, 0
+  %t71 = zext i1 %t70 to i64
   br label %L18
 L18:
-  %t64 = phi i64 [ 1, %L16 ], [ %t63, %L17 ]
-  %t65 = icmp ne i64 %t64, 0
-  %t66 = zext i1 %t65 to i64
+  %t72 = phi i64 [ 1, %L16 ], [ %t71, %L17 ]
+  %t73 = icmp ne i64 %t72, 0
+  %t74 = zext i1 %t73 to i64
   br label %L15
 L14:
   br label %L15
 L15:
-  %t67 = phi i64 [ %t66, %L13 ], [ 0, %L14 ]
-  %t68 = icmp ne i64 %t67, 0
-  br i1 %t68, label %L19, label %L20
+  %t75 = phi i64 [ %t74, %L13 ], [ 0, %L14 ]
+  %t76 = icmp ne i64 %t75, 0
+  br i1 %t76, label %L19, label %L20
 L19:
-  %t69 = call i8 @advance(ptr %t0)
-  %t70 = sext i8 %t69 to i64
-  %t71 = call i8 @advance(ptr %t0)
-  %t72 = sext i8 %t71 to i64
-  br label %L22
-L22:
-  %t73 = call i8 @cur(ptr %t0)
-  %t74 = sext i8 %t73 to i64
-  %t75 = add i64 %t74, 0
-  %t76 = call i32 @isxdigit(i64 %t75)
-  %t77 = sext i32 %t76 to i64
-  %t78 = icmp ne i64 %t77, 0
-  br i1 %t78, label %L23, label %L24
-L23:
+  %t77 = call i8 @advance(ptr %t0)
+  %t78 = sext i8 %t77 to i64
   %t79 = call i8 @advance(ptr %t0)
   %t80 = sext i8 %t79 to i64
+  br label %L22
+L22:
+  %t81 = call i8 @cur(ptr %t0)
+  %t82 = sext i8 %t81 to i64
+  %t83 = add i64 %t82, 0
+  %t84 = call i32 @isxdigit(i64 %t83)
+  %t85 = sext i32 %t84 to i64
+  %t86 = icmp ne i64 %t85, 0
+  br i1 %t86, label %L23, label %L24
+L23:
+  %t87 = call i8 @advance(ptr %t0)
+  %t88 = sext i8 %t87 to i64
   br label %L22
 L24:
   br label %L21
 L20:
   br label %L25
 L25:
-  %t81 = call i8 @cur(ptr %t0)
-  %t82 = sext i8 %t81 to i64
-  %t83 = add i64 %t82, 0
-  %t84 = call i32 @isdigit(i64 %t83)
-  %t85 = sext i32 %t84 to i64
-  %t86 = icmp ne i64 %t85, 0
-  br i1 %t86, label %L26, label %L27
-L26:
-  %t87 = call i8 @advance(ptr %t0)
-  %t88 = sext i8 %t87 to i64
-  br label %L25
-L27:
   %t89 = call i8 @cur(ptr %t0)
   %t90 = sext i8 %t89 to i64
-  %t92 = sext i32 46 to i64
-  %t91 = icmp eq i64 %t90, %t92
-  %t93 = zext i1 %t91 to i64
+  %t91 = add i64 %t90, 0
+  %t92 = call i32 @isdigit(i64 %t91)
+  %t93 = sext i32 %t92 to i64
   %t94 = icmp ne i64 %t93, 0
-  br i1 %t94, label %L28, label %L30
+  br i1 %t94, label %L26, label %L27
+L26:
+  %t95 = call i8 @advance(ptr %t0)
+  %t96 = sext i8 %t95 to i64
+  br label %L25
+L27:
+  %t97 = call i8 @cur(ptr %t0)
+  %t98 = sext i8 %t97 to i64
+  %t100 = sext i32 46 to i64
+  %t99 = icmp eq i64 %t98, %t100
+  %t101 = zext i1 %t99 to i64
+  %t102 = icmp ne i64 %t101, 0
+  br i1 %t102, label %L28, label %L30
 L28:
-  %t95 = sext i32 1 to i64
-  store i64 %t95, ptr %t43
-  %t96 = call i8 @advance(ptr %t0)
-  %t97 = sext i8 %t96 to i64
+  %t103 = sext i32 1 to i64
+  store i64 %t103, ptr %t51
+  %t104 = call i8 @advance(ptr %t0)
+  %t105 = sext i8 %t104 to i64
   br label %L30
 L30:
   br label %L31
 L31:
-  %t98 = call i8 @cur(ptr %t0)
-  %t99 = sext i8 %t98 to i64
-  %t100 = add i64 %t99, 0
-  %t101 = call i32 @isdigit(i64 %t100)
-  %t102 = sext i32 %t101 to i64
-  %t103 = icmp ne i64 %t102, 0
-  br i1 %t103, label %L32, label %L33
-L32:
-  %t104 = call i8 @advance(ptr %t0)
-  %t105 = sext i8 %t104 to i64
-  br label %L31
-L33:
   %t106 = call i8 @cur(ptr %t0)
   %t107 = sext i8 %t106 to i64
-  %t109 = sext i32 101 to i64
-  %t108 = icmp eq i64 %t107, %t109
-  %t110 = zext i1 %t108 to i64
+  %t108 = add i64 %t107, 0
+  %t109 = call i32 @isdigit(i64 %t108)
+  %t110 = sext i32 %t109 to i64
   %t111 = icmp ne i64 %t110, 0
-  br i1 %t111, label %L34, label %L35
+  br i1 %t111, label %L32, label %L33
+L32:
+  %t112 = call i8 @advance(ptr %t0)
+  %t113 = sext i8 %t112 to i64
+  br label %L31
+L33:
+  %t114 = call i8 @cur(ptr %t0)
+  %t115 = sext i8 %t114 to i64
+  %t117 = sext i32 101 to i64
+  %t116 = icmp eq i64 %t115, %t117
+  %t118 = zext i1 %t116 to i64
+  %t119 = icmp ne i64 %t118, 0
+  br i1 %t119, label %L34, label %L35
 L34:
   br label %L36
 L35:
-  %t112 = call i8 @cur(ptr %t0)
-  %t113 = sext i8 %t112 to i64
-  %t115 = sext i32 69 to i64
-  %t114 = icmp eq i64 %t113, %t115
-  %t116 = zext i1 %t114 to i64
-  %t117 = icmp ne i64 %t116, 0
-  %t118 = zext i1 %t117 to i64
+  %t120 = call i8 @cur(ptr %t0)
+  %t121 = sext i8 %t120 to i64
+  %t123 = sext i32 69 to i64
+  %t122 = icmp eq i64 %t121, %t123
+  %t124 = zext i1 %t122 to i64
+  %t125 = icmp ne i64 %t124, 0
+  %t126 = zext i1 %t125 to i64
   br label %L36
 L36:
-  %t119 = phi i64 [ 1, %L34 ], [ %t118, %L35 ]
-  %t120 = icmp ne i64 %t119, 0
-  br i1 %t120, label %L37, label %L39
+  %t127 = phi i64 [ 1, %L34 ], [ %t126, %L35 ]
+  %t128 = icmp ne i64 %t127, 0
+  br i1 %t128, label %L37, label %L39
 L37:
-  %t121 = sext i32 1 to i64
-  store i64 %t121, ptr %t43
-  %t122 = call i8 @advance(ptr %t0)
-  %t123 = sext i8 %t122 to i64
-  %t124 = call i8 @cur(ptr %t0)
-  %t125 = sext i8 %t124 to i64
-  %t127 = sext i32 43 to i64
-  %t126 = icmp eq i64 %t125, %t127
-  %t128 = zext i1 %t126 to i64
-  %t129 = icmp ne i64 %t128, 0
-  br i1 %t129, label %L40, label %L41
+  %t129 = sext i32 1 to i64
+  store i64 %t129, ptr %t51
+  %t130 = call i8 @advance(ptr %t0)
+  %t131 = sext i8 %t130 to i64
+  %t132 = call i8 @cur(ptr %t0)
+  %t133 = sext i8 %t132 to i64
+  %t135 = sext i32 43 to i64
+  %t134 = icmp eq i64 %t133, %t135
+  %t136 = zext i1 %t134 to i64
+  %t137 = icmp ne i64 %t136, 0
+  br i1 %t137, label %L40, label %L41
 L40:
   br label %L42
 L41:
-  %t130 = call i8 @cur(ptr %t0)
-  %t131 = sext i8 %t130 to i64
-  %t133 = sext i32 45 to i64
-  %t132 = icmp eq i64 %t131, %t133
-  %t134 = zext i1 %t132 to i64
-  %t135 = icmp ne i64 %t134, 0
-  %t136 = zext i1 %t135 to i64
+  %t138 = call i8 @cur(ptr %t0)
+  %t139 = sext i8 %t138 to i64
+  %t141 = sext i32 45 to i64
+  %t140 = icmp eq i64 %t139, %t141
+  %t142 = zext i1 %t140 to i64
+  %t143 = icmp ne i64 %t142, 0
+  %t144 = zext i1 %t143 to i64
   br label %L42
 L42:
-  %t137 = phi i64 [ 1, %L40 ], [ %t136, %L41 ]
-  %t138 = icmp ne i64 %t137, 0
-  br i1 %t138, label %L43, label %L45
+  %t145 = phi i64 [ 1, %L40 ], [ %t144, %L41 ]
+  %t146 = icmp ne i64 %t145, 0
+  br i1 %t146, label %L43, label %L45
 L43:
-  %t139 = call i8 @advance(ptr %t0)
-  %t140 = sext i8 %t139 to i64
+  %t147 = call i8 @advance(ptr %t0)
+  %t148 = sext i8 %t147 to i64
   br label %L45
 L45:
   br label %L46
 L46:
-  %t141 = call i8 @cur(ptr %t0)
-  %t142 = sext i8 %t141 to i64
-  %t143 = add i64 %t142, 0
-  %t144 = call i32 @isdigit(i64 %t143)
-  %t145 = sext i32 %t144 to i64
-  %t146 = icmp ne i64 %t145, 0
-  br i1 %t146, label %L47, label %L48
+  %t149 = call i8 @cur(ptr %t0)
+  %t150 = sext i8 %t149 to i64
+  %t151 = add i64 %t150, 0
+  %t152 = call i32 @isdigit(i64 %t151)
+  %t153 = sext i32 %t152 to i64
+  %t154 = icmp ne i64 %t153, 0
+  br i1 %t154, label %L47, label %L48
 L47:
-  %t147 = call i8 @advance(ptr %t0)
-  %t148 = sext i8 %t147 to i64
+  %t155 = call i8 @advance(ptr %t0)
+  %t156 = sext i8 %t155 to i64
   br label %L46
 L48:
   br label %L39
@@ -1076,369 +1098,377 @@ L39:
 L21:
   br label %L49
 L49:
-  %t149 = call i8 @cur(ptr %t0)
-  %t150 = sext i8 %t149 to i64
-  %t152 = sext i32 117 to i64
-  %t151 = icmp eq i64 %t150, %t152
-  %t153 = zext i1 %t151 to i64
-  %t154 = icmp ne i64 %t153, 0
-  br i1 %t154, label %L52, label %L53
+  %t157 = call i8 @cur(ptr %t0)
+  %t158 = sext i8 %t157 to i64
+  %t160 = sext i32 117 to i64
+  %t159 = icmp eq i64 %t158, %t160
+  %t161 = zext i1 %t159 to i64
+  %t162 = icmp ne i64 %t161, 0
+  br i1 %t162, label %L52, label %L53
 L52:
   br label %L54
 L53:
-  %t155 = call i8 @cur(ptr %t0)
-  %t156 = sext i8 %t155 to i64
-  %t158 = sext i32 85 to i64
-  %t157 = icmp eq i64 %t156, %t158
-  %t159 = zext i1 %t157 to i64
-  %t160 = icmp ne i64 %t159, 0
-  %t161 = zext i1 %t160 to i64
+  %t163 = call i8 @cur(ptr %t0)
+  %t164 = sext i8 %t163 to i64
+  %t166 = sext i32 85 to i64
+  %t165 = icmp eq i64 %t164, %t166
+  %t167 = zext i1 %t165 to i64
+  %t168 = icmp ne i64 %t167, 0
+  %t169 = zext i1 %t168 to i64
   br label %L54
 L54:
-  %t162 = phi i64 [ 1, %L52 ], [ %t161, %L53 ]
-  %t163 = icmp ne i64 %t162, 0
-  br i1 %t163, label %L55, label %L56
+  %t170 = phi i64 [ 1, %L52 ], [ %t169, %L53 ]
+  %t171 = icmp ne i64 %t170, 0
+  br i1 %t171, label %L55, label %L56
 L55:
   br label %L57
 L56:
-  %t164 = call i8 @cur(ptr %t0)
-  %t165 = sext i8 %t164 to i64
-  %t167 = sext i32 108 to i64
-  %t166 = icmp eq i64 %t165, %t167
-  %t168 = zext i1 %t166 to i64
-  %t169 = icmp ne i64 %t168, 0
-  %t170 = zext i1 %t169 to i64
+  %t172 = call i8 @cur(ptr %t0)
+  %t173 = sext i8 %t172 to i64
+  %t175 = sext i32 108 to i64
+  %t174 = icmp eq i64 %t173, %t175
+  %t176 = zext i1 %t174 to i64
+  %t177 = icmp ne i64 %t176, 0
+  %t178 = zext i1 %t177 to i64
   br label %L57
 L57:
-  %t171 = phi i64 [ 1, %L55 ], [ %t170, %L56 ]
-  %t172 = icmp ne i64 %t171, 0
-  br i1 %t172, label %L58, label %L59
+  %t179 = phi i64 [ 1, %L55 ], [ %t178, %L56 ]
+  %t180 = icmp ne i64 %t179, 0
+  br i1 %t180, label %L58, label %L59
 L58:
   br label %L60
 L59:
-  %t173 = call i8 @cur(ptr %t0)
-  %t174 = sext i8 %t173 to i64
-  %t176 = sext i32 76 to i64
-  %t175 = icmp eq i64 %t174, %t176
-  %t177 = zext i1 %t175 to i64
-  %t178 = icmp ne i64 %t177, 0
-  %t179 = zext i1 %t178 to i64
+  %t181 = call i8 @cur(ptr %t0)
+  %t182 = sext i8 %t181 to i64
+  %t184 = sext i32 76 to i64
+  %t183 = icmp eq i64 %t182, %t184
+  %t185 = zext i1 %t183 to i64
+  %t186 = icmp ne i64 %t185, 0
+  %t187 = zext i1 %t186 to i64
   br label %L60
 L60:
-  %t180 = phi i64 [ 1, %L58 ], [ %t179, %L59 ]
-  %t181 = icmp ne i64 %t180, 0
-  br i1 %t181, label %L61, label %L62
+  %t188 = phi i64 [ 1, %L58 ], [ %t187, %L59 ]
+  %t189 = icmp ne i64 %t188, 0
+  br i1 %t189, label %L61, label %L62
 L61:
   br label %L63
 L62:
-  %t182 = call i8 @cur(ptr %t0)
-  %t183 = sext i8 %t182 to i64
-  %t185 = sext i32 102 to i64
-  %t184 = icmp eq i64 %t183, %t185
-  %t186 = zext i1 %t184 to i64
-  %t187 = icmp ne i64 %t186, 0
-  %t188 = zext i1 %t187 to i64
+  %t190 = call i8 @cur(ptr %t0)
+  %t191 = sext i8 %t190 to i64
+  %t193 = sext i32 102 to i64
+  %t192 = icmp eq i64 %t191, %t193
+  %t194 = zext i1 %t192 to i64
+  %t195 = icmp ne i64 %t194, 0
+  %t196 = zext i1 %t195 to i64
   br label %L63
 L63:
-  %t189 = phi i64 [ 1, %L61 ], [ %t188, %L62 ]
-  %t190 = icmp ne i64 %t189, 0
-  br i1 %t190, label %L64, label %L65
+  %t197 = phi i64 [ 1, %L61 ], [ %t196, %L62 ]
+  %t198 = icmp ne i64 %t197, 0
+  br i1 %t198, label %L64, label %L65
 L64:
   br label %L66
 L65:
-  %t191 = call i8 @cur(ptr %t0)
-  %t192 = sext i8 %t191 to i64
-  %t194 = sext i32 70 to i64
-  %t193 = icmp eq i64 %t192, %t194
-  %t195 = zext i1 %t193 to i64
-  %t196 = icmp ne i64 %t195, 0
-  %t197 = zext i1 %t196 to i64
+  %t199 = call i8 @cur(ptr %t0)
+  %t200 = sext i8 %t199 to i64
+  %t202 = sext i32 70 to i64
+  %t201 = icmp eq i64 %t200, %t202
+  %t203 = zext i1 %t201 to i64
+  %t204 = icmp ne i64 %t203, 0
+  %t205 = zext i1 %t204 to i64
   br label %L66
 L66:
-  %t198 = phi i64 [ 1, %L64 ], [ %t197, %L65 ]
-  %t199 = icmp ne i64 %t198, 0
-  br i1 %t199, label %L50, label %L51
+  %t206 = phi i64 [ 1, %L64 ], [ %t205, %L65 ]
+  %t207 = icmp ne i64 %t206, 0
+  br i1 %t207, label %L50, label %L51
 L50:
-  %t200 = call i8 @advance(ptr %t0)
-  %t201 = sext i8 %t200 to i64
+  %t208 = call i8 @advance(ptr %t0)
+  %t209 = sext i8 %t208 to i64
   br label %L49
 L51:
-  %t202 = load i64, ptr %t43
-  %t204 = sext i32 %t202 to i64
-  %t203 = icmp ne i64 %t204, 0
-  br i1 %t203, label %L67, label %L68
+  %t210 = load i64, ptr %t51
+  %t212 = sext i32 %t210 to i64
+  %t211 = icmp ne i64 %t212, 0
+  br i1 %t211, label %L67, label %L68
 L67:
-  %t205 = sext i32 1 to i64
+  %t213 = sext i32 1 to i64
   br label %L69
 L68:
-  %t206 = sext i32 0 to i64
+  %t214 = sext i32 0 to i64
   br label %L69
 L69:
-  %t207 = phi i64 [ %t205, %L67 ], [ %t206, %L68 ]
-  store i64 %t207, ptr %t2
-  %t208 = load ptr, ptr %t0
-  %t209 = load i64, ptr %t41
-  %t211 = ptrtoint ptr %t208 to i64
-  %t212 = sext i32 %t209 to i64
-  %t213 = inttoptr i64 %t211 to ptr
-  %t210 = getelementptr i8, ptr %t213, i64 %t212
-  %t214 = load ptr, ptr %t0
-  %t215 = load i64, ptr %t41
-  %t217 = ptrtoint ptr %t214 to i64
-  %t218 = sext i32 %t215 to i64
-  %t216 = sub i64 %t217, %t218
-  %t219 = call ptr @strndup_local(ptr %t210, i64 %t216)
-  store ptr %t219, ptr %t2
-  %t220 = load i64, ptr %t2
-  %t221 = sext i32 %t220 to i64
-  ret i64 %t221
+  %t215 = phi i64 [ %t213, %L67 ], [ %t214, %L68 ]
+  %t216 = getelementptr i8, ptr %t2, i64 0
+  store i64 %t215, ptr %t216
+  %t217 = getelementptr i8, ptr %t0, i64 0
+  %t218 = load i64, ptr %t217
+  %t219 = load i64, ptr %t48
+  %t221 = sext i32 %t219 to i64
+  %t220 = add i64 %t218, %t221
+  %t222 = getelementptr i8, ptr %t0, i64 0
+  %t223 = load i64, ptr %t222
+  %t224 = load i64, ptr %t48
+  %t226 = sext i32 %t224 to i64
+  %t225 = sub i64 %t223, %t226
+  %t227 = call ptr @strndup_local(i64 %t220, i64 %t225)
+  %t228 = getelementptr i8, ptr %t2, i64 0
+  store ptr %t227, ptr %t228
+  %t229 = load i64, ptr %t2
+  %t230 = sext i32 %t229 to i64
+  ret i64 %t230
 L70:
   br label %L12
 L12:
-  %t222 = call i8 @cur(ptr %t0)
-  %t223 = sext i8 %t222 to i64
-  %t225 = sext i32 39 to i64
-  %t224 = icmp eq i64 %t223, %t225
-  %t226 = zext i1 %t224 to i64
-  %t227 = icmp ne i64 %t226, 0
-  br i1 %t227, label %L71, label %L73
+  %t231 = call i8 @cur(ptr %t0)
+  %t232 = sext i8 %t231 to i64
+  %t234 = sext i32 39 to i64
+  %t233 = icmp eq i64 %t232, %t234
+  %t235 = zext i1 %t233 to i64
+  %t236 = icmp ne i64 %t235, 0
+  br i1 %t236, label %L71, label %L73
 L71:
-  %t228 = alloca i64
-  %t229 = load ptr, ptr %t0
-  store ptr %t229, ptr %t228
-  %t230 = call i8 @advance(ptr %t0)
-  %t231 = sext i8 %t230 to i64
-  %t232 = call i8 @cur(ptr %t0)
-  %t233 = sext i8 %t232 to i64
-  %t235 = sext i32 92 to i64
-  %t234 = icmp eq i64 %t233, %t235
-  %t236 = zext i1 %t234 to i64
-  %t237 = icmp ne i64 %t236, 0
-  br i1 %t237, label %L74, label %L75
-L74:
-  %t238 = call i8 @advance(ptr %t0)
-  %t239 = sext i8 %t238 to i64
+  %t237 = alloca i64
+  %t238 = getelementptr i8, ptr %t0, i64 0
+  %t239 = load i64, ptr %t238
+  store i64 %t239, ptr %t237
   %t240 = call i8 @advance(ptr %t0)
   %t241 = sext i8 %t240 to i64
-  br label %L76
-L75:
-  %t242 = call i8 @advance(ptr %t0)
+  %t242 = call i8 @cur(ptr %t0)
   %t243 = sext i8 %t242 to i64
-  br label %L76
-L76:
-  %t244 = call i8 @cur(ptr %t0)
-  %t245 = sext i8 %t244 to i64
-  %t247 = sext i32 39 to i64
-  %t246 = icmp eq i64 %t245, %t247
-  %t248 = zext i1 %t246 to i64
-  %t249 = icmp ne i64 %t248, 0
-  br i1 %t249, label %L77, label %L79
-L77:
+  %t245 = sext i32 92 to i64
+  %t244 = icmp eq i64 %t243, %t245
+  %t246 = zext i1 %t244 to i64
+  %t247 = icmp ne i64 %t246, 0
+  br i1 %t247, label %L74, label %L75
+L74:
+  %t248 = call i8 @advance(ptr %t0)
+  %t249 = sext i8 %t248 to i64
   %t250 = call i8 @advance(ptr %t0)
   %t251 = sext i8 %t250 to i64
+  br label %L76
+L75:
+  %t252 = call i8 @advance(ptr %t0)
+  %t253 = sext i8 %t252 to i64
+  br label %L76
+L76:
+  %t254 = call i8 @cur(ptr %t0)
+  %t255 = sext i8 %t254 to i64
+  %t257 = sext i32 39 to i64
+  %t256 = icmp eq i64 %t255, %t257
+  %t258 = zext i1 %t256 to i64
+  %t259 = icmp ne i64 %t258, 0
+  br i1 %t259, label %L77, label %L79
+L77:
+  %t260 = call i8 @advance(ptr %t0)
+  %t261 = sext i8 %t260 to i64
   br label %L79
 L79:
-  %t252 = sext i32 2 to i64
-  store i64 %t252, ptr %t2
-  %t253 = load ptr, ptr %t0
-  %t254 = load i64, ptr %t228
-  %t256 = ptrtoint ptr %t253 to i64
-  %t257 = sext i32 %t254 to i64
-  %t258 = inttoptr i64 %t256 to ptr
-  %t255 = getelementptr i8, ptr %t258, i64 %t257
-  %t259 = load ptr, ptr %t0
-  %t260 = load i64, ptr %t228
-  %t262 = ptrtoint ptr %t259 to i64
-  %t263 = sext i32 %t260 to i64
-  %t261 = sub i64 %t262, %t263
-  %t264 = call ptr @strndup_local(ptr %t255, i64 %t261)
-  store ptr %t264, ptr %t2
-  %t265 = load i64, ptr %t2
-  %t266 = sext i32 %t265 to i64
-  ret i64 %t266
+  %t262 = getelementptr i8, ptr %t2, i64 0
+  %t263 = sext i32 2 to i64
+  store i64 %t263, ptr %t262
+  %t264 = getelementptr i8, ptr %t0, i64 0
+  %t265 = load i64, ptr %t264
+  %t266 = load i64, ptr %t237
+  %t268 = sext i32 %t266 to i64
+  %t267 = add i64 %t265, %t268
+  %t269 = getelementptr i8, ptr %t0, i64 0
+  %t270 = load i64, ptr %t269
+  %t271 = load i64, ptr %t237
+  %t273 = sext i32 %t271 to i64
+  %t272 = sub i64 %t270, %t273
+  %t274 = call ptr @strndup_local(i64 %t267, i64 %t272)
+  %t275 = getelementptr i8, ptr %t2, i64 0
+  store ptr %t274, ptr %t275
+  %t276 = load i64, ptr %t2
+  %t277 = sext i32 %t276 to i64
+  ret i64 %t277
 L80:
   br label %L73
 L73:
-  %t267 = call i8 @cur(ptr %t0)
-  %t268 = sext i8 %t267 to i64
-  %t270 = sext i32 34 to i64
-  %t269 = icmp eq i64 %t268, %t270
-  %t271 = zext i1 %t269 to i64
-  %t272 = icmp ne i64 %t271, 0
-  br i1 %t272, label %L81, label %L83
+  %t278 = call i8 @cur(ptr %t0)
+  %t279 = sext i8 %t278 to i64
+  %t281 = sext i32 34 to i64
+  %t280 = icmp eq i64 %t279, %t281
+  %t282 = zext i1 %t280 to i64
+  %t283 = icmp ne i64 %t282, 0
+  br i1 %t283, label %L81, label %L83
 L81:
-  %t273 = alloca i64
-  %t274 = load ptr, ptr %t0
-  store ptr %t274, ptr %t273
-  %t275 = call i8 @advance(ptr %t0)
-  %t276 = sext i8 %t275 to i64
+  %t284 = alloca i64
+  %t285 = getelementptr i8, ptr %t0, i64 0
+  %t286 = load i64, ptr %t285
+  store i64 %t286, ptr %t284
+  %t287 = call i8 @advance(ptr %t0)
+  %t288 = sext i8 %t287 to i64
   br label %L84
 L84:
-  %t277 = call i8 @cur(ptr %t0)
-  %t278 = sext i8 %t277 to i64
-  %t279 = icmp ne i64 %t278, 0
-  br i1 %t279, label %L87, label %L88
+  %t289 = call i8 @cur(ptr %t0)
+  %t290 = sext i8 %t289 to i64
+  %t291 = icmp ne i64 %t290, 0
+  br i1 %t291, label %L87, label %L88
 L87:
-  %t280 = call i8 @cur(ptr %t0)
-  %t281 = sext i8 %t280 to i64
-  %t283 = sext i32 34 to i64
-  %t282 = icmp ne i64 %t281, %t283
-  %t284 = zext i1 %t282 to i64
-  %t285 = icmp ne i64 %t284, 0
-  %t286 = zext i1 %t285 to i64
+  %t292 = call i8 @cur(ptr %t0)
+  %t293 = sext i8 %t292 to i64
+  %t295 = sext i32 34 to i64
+  %t294 = icmp ne i64 %t293, %t295
+  %t296 = zext i1 %t294 to i64
+  %t297 = icmp ne i64 %t296, 0
+  %t298 = zext i1 %t297 to i64
   br label %L89
 L88:
   br label %L89
 L89:
-  %t287 = phi i64 [ %t286, %L87 ], [ 0, %L88 ]
-  %t288 = icmp ne i64 %t287, 0
-  br i1 %t288, label %L85, label %L86
+  %t299 = phi i64 [ %t298, %L87 ], [ 0, %L88 ]
+  %t300 = icmp ne i64 %t299, 0
+  br i1 %t300, label %L85, label %L86
 L85:
-  %t289 = call i8 @cur(ptr %t0)
-  %t290 = sext i8 %t289 to i64
-  %t292 = sext i32 92 to i64
-  %t291 = icmp eq i64 %t290, %t292
-  %t293 = zext i1 %t291 to i64
-  %t294 = icmp ne i64 %t293, 0
-  br i1 %t294, label %L90, label %L92
+  %t301 = call i8 @cur(ptr %t0)
+  %t302 = sext i8 %t301 to i64
+  %t304 = sext i32 92 to i64
+  %t303 = icmp eq i64 %t302, %t304
+  %t305 = zext i1 %t303 to i64
+  %t306 = icmp ne i64 %t305, 0
+  br i1 %t306, label %L90, label %L92
 L90:
-  %t295 = call i8 @advance(ptr %t0)
-  %t296 = sext i8 %t295 to i64
+  %t307 = call i8 @advance(ptr %t0)
+  %t308 = sext i8 %t307 to i64
   br label %L92
 L92:
-  %t297 = call i8 @cur(ptr %t0)
-  %t298 = sext i8 %t297 to i64
-  %t299 = icmp ne i64 %t298, 0
-  br i1 %t299, label %L93, label %L95
+  %t309 = call i8 @cur(ptr %t0)
+  %t310 = sext i8 %t309 to i64
+  %t311 = icmp ne i64 %t310, 0
+  br i1 %t311, label %L93, label %L95
 L93:
-  %t300 = call i8 @advance(ptr %t0)
-  %t301 = sext i8 %t300 to i64
+  %t312 = call i8 @advance(ptr %t0)
+  %t313 = sext i8 %t312 to i64
   br label %L95
 L95:
   br label %L84
 L86:
-  %t302 = call i8 @cur(ptr %t0)
-  %t303 = sext i8 %t302 to i64
-  %t305 = sext i32 34 to i64
-  %t304 = icmp eq i64 %t303, %t305
-  %t306 = zext i1 %t304 to i64
-  %t307 = icmp ne i64 %t306, 0
-  br i1 %t307, label %L96, label %L98
+  %t314 = call i8 @cur(ptr %t0)
+  %t315 = sext i8 %t314 to i64
+  %t317 = sext i32 34 to i64
+  %t316 = icmp eq i64 %t315, %t317
+  %t318 = zext i1 %t316 to i64
+  %t319 = icmp ne i64 %t318, 0
+  br i1 %t319, label %L96, label %L98
 L96:
-  %t308 = call i8 @advance(ptr %t0)
-  %t309 = sext i8 %t308 to i64
+  %t320 = call i8 @advance(ptr %t0)
+  %t321 = sext i8 %t320 to i64
   br label %L98
 L98:
-  %t310 = sext i32 3 to i64
-  store i64 %t310, ptr %t2
-  %t311 = load ptr, ptr %t0
-  %t312 = load i64, ptr %t273
-  %t314 = ptrtoint ptr %t311 to i64
-  %t315 = sext i32 %t312 to i64
-  %t316 = inttoptr i64 %t314 to ptr
-  %t313 = getelementptr i8, ptr %t316, i64 %t315
-  %t317 = load ptr, ptr %t0
-  %t318 = load i64, ptr %t273
-  %t320 = ptrtoint ptr %t317 to i64
-  %t321 = sext i32 %t318 to i64
-  %t319 = sub i64 %t320, %t321
-  %t322 = call ptr @strndup_local(ptr %t313, i64 %t319)
-  store ptr %t322, ptr %t2
-  %t323 = load i64, ptr %t2
-  %t324 = sext i32 %t323 to i64
-  ret i64 %t324
+  %t322 = getelementptr i8, ptr %t2, i64 0
+  %t323 = sext i32 3 to i64
+  store i64 %t323, ptr %t322
+  %t324 = getelementptr i8, ptr %t0, i64 0
+  %t325 = load i64, ptr %t324
+  %t326 = load i64, ptr %t284
+  %t328 = sext i32 %t326 to i64
+  %t327 = add i64 %t325, %t328
+  %t329 = getelementptr i8, ptr %t0, i64 0
+  %t330 = load i64, ptr %t329
+  %t331 = load i64, ptr %t284
+  %t333 = sext i32 %t331 to i64
+  %t332 = sub i64 %t330, %t333
+  %t334 = call ptr @strndup_local(i64 %t327, i64 %t332)
+  %t335 = getelementptr i8, ptr %t2, i64 0
+  store ptr %t334, ptr %t335
+  %t336 = load i64, ptr %t2
+  %t337 = sext i32 %t336 to i64
+  ret i64 %t337
 L99:
   br label %L83
 L83:
-  %t325 = call i8 @cur(ptr %t0)
-  %t326 = sext i8 %t325 to i64
-  %t327 = add i64 %t326, 0
-  %t328 = call i32 @isalpha(i64 %t327)
-  %t329 = sext i32 %t328 to i64
-  %t330 = icmp ne i64 %t329, 0
-  br i1 %t330, label %L100, label %L101
+  %t338 = call i8 @cur(ptr %t0)
+  %t339 = sext i8 %t338 to i64
+  %t340 = add i64 %t339, 0
+  %t341 = call i32 @isalpha(i64 %t340)
+  %t342 = sext i32 %t341 to i64
+  %t343 = icmp ne i64 %t342, 0
+  br i1 %t343, label %L100, label %L101
 L100:
   br label %L102
 L101:
-  %t331 = call i8 @cur(ptr %t0)
-  %t332 = sext i8 %t331 to i64
-  %t334 = sext i32 95 to i64
-  %t333 = icmp eq i64 %t332, %t334
-  %t335 = zext i1 %t333 to i64
-  %t336 = icmp ne i64 %t335, 0
-  %t337 = zext i1 %t336 to i64
+  %t344 = call i8 @cur(ptr %t0)
+  %t345 = sext i8 %t344 to i64
+  %t347 = sext i32 95 to i64
+  %t346 = icmp eq i64 %t345, %t347
+  %t348 = zext i1 %t346 to i64
+  %t349 = icmp ne i64 %t348, 0
+  %t350 = zext i1 %t349 to i64
   br label %L102
 L102:
-  %t338 = phi i64 [ 1, %L100 ], [ %t337, %L101 ]
-  %t339 = icmp ne i64 %t338, 0
-  br i1 %t339, label %L103, label %L105
+  %t351 = phi i64 [ 1, %L100 ], [ %t350, %L101 ]
+  %t352 = icmp ne i64 %t351, 0
+  br i1 %t352, label %L103, label %L105
 L103:
-  %t340 = alloca i64
-  %t341 = load ptr, ptr %t0
-  store ptr %t341, ptr %t340
+  %t353 = alloca i64
+  %t354 = getelementptr i8, ptr %t0, i64 0
+  %t355 = load i64, ptr %t354
+  store i64 %t355, ptr %t353
   br label %L106
 L106:
-  %t342 = call i8 @cur(ptr %t0)
-  %t343 = sext i8 %t342 to i64
-  %t344 = add i64 %t343, 0
-  %t345 = call i32 @isalnum(i64 %t344)
-  %t346 = sext i32 %t345 to i64
-  %t347 = icmp ne i64 %t346, 0
-  br i1 %t347, label %L109, label %L110
+  %t356 = call i8 @cur(ptr %t0)
+  %t357 = sext i8 %t356 to i64
+  %t358 = add i64 %t357, 0
+  %t359 = call i32 @isalnum(i64 %t358)
+  %t360 = sext i32 %t359 to i64
+  %t361 = icmp ne i64 %t360, 0
+  br i1 %t361, label %L109, label %L110
 L109:
   br label %L111
 L110:
-  %t348 = call i8 @cur(ptr %t0)
-  %t349 = sext i8 %t348 to i64
-  %t351 = sext i32 95 to i64
-  %t350 = icmp eq i64 %t349, %t351
-  %t352 = zext i1 %t350 to i64
-  %t353 = icmp ne i64 %t352, 0
-  %t354 = zext i1 %t353 to i64
+  %t362 = call i8 @cur(ptr %t0)
+  %t363 = sext i8 %t362 to i64
+  %t365 = sext i32 95 to i64
+  %t364 = icmp eq i64 %t363, %t365
+  %t366 = zext i1 %t364 to i64
+  %t367 = icmp ne i64 %t366, 0
+  %t368 = zext i1 %t367 to i64
   br label %L111
 L111:
-  %t355 = phi i64 [ 1, %L109 ], [ %t354, %L110 ]
-  %t356 = icmp ne i64 %t355, 0
-  br i1 %t356, label %L107, label %L108
+  %t369 = phi i64 [ 1, %L109 ], [ %t368, %L110 ]
+  %t370 = icmp ne i64 %t369, 0
+  br i1 %t370, label %L107, label %L108
 L107:
-  %t357 = call i8 @advance(ptr %t0)
-  %t358 = sext i8 %t357 to i64
+  %t371 = call i8 @advance(ptr %t0)
+  %t372 = sext i8 %t371 to i64
   br label %L106
 L108:
-  %t359 = load ptr, ptr %t0
-  %t360 = load i64, ptr %t340
-  %t362 = ptrtoint ptr %t359 to i64
-  %t363 = sext i32 %t360 to i64
-  %t364 = inttoptr i64 %t362 to ptr
-  %t361 = getelementptr i8, ptr %t364, i64 %t363
-  %t365 = load ptr, ptr %t0
-  %t366 = load i64, ptr %t340
-  %t368 = ptrtoint ptr %t365 to i64
-  %t369 = sext i32 %t366 to i64
-  %t367 = sub i64 %t368, %t369
-  %t370 = call ptr @strndup_local(ptr %t361, i64 %t367)
-  store ptr %t370, ptr %t2
-  %t371 = load ptr, ptr %t2
-  %t372 = call i64 @keyword_lookup(ptr %t371)
-  store i64 %t372, ptr %t2
-  %t373 = load i64, ptr %t2
-  %t374 = sext i32 %t373 to i64
-  ret i64 %t374
+  %t373 = getelementptr i8, ptr %t0, i64 0
+  %t374 = load i64, ptr %t373
+  %t375 = load i64, ptr %t353
+  %t377 = sext i32 %t375 to i64
+  %t376 = add i64 %t374, %t377
+  %t378 = getelementptr i8, ptr %t0, i64 0
+  %t379 = load i64, ptr %t378
+  %t380 = load i64, ptr %t353
+  %t382 = sext i32 %t380 to i64
+  %t381 = sub i64 %t379, %t382
+  %t383 = call ptr @strndup_local(i64 %t376, i64 %t381)
+  %t384 = getelementptr i8, ptr %t2, i64 0
+  store ptr %t383, ptr %t384
+  %t385 = getelementptr i8, ptr %t2, i64 0
+  %t386 = load i64, ptr %t385
+  %t387 = call i64 @keyword_lookup(i64 %t386)
+  %t388 = getelementptr i8, ptr %t2, i64 0
+  store i64 %t387, ptr %t388
+  %t389 = load i64, ptr %t2
+  %t390 = sext i32 %t389 to i64
+  ret i64 %t390
 L112:
   br label %L105
 L105:
-  %t375 = alloca i64
-  %t376 = call i8 @advance(ptr %t0)
-  %t377 = sext i8 %t376 to i64
-  store i64 %t377, ptr %t375
-  %t378 = alloca i64
-  %t379 = call i8 @cur(ptr %t0)
-  %t380 = sext i8 %t379 to i64
-  store i64 %t380, ptr %t378
-  %t381 = load i64, ptr %t375
-  %t382 = sext i32 %t381 to i64
-  %t383 = add i64 %t382, 0
-  switch i64 %t383, label %L138 [
+  %t391 = alloca i64
+  %t392 = call i8 @advance(ptr %t0)
+  %t393 = sext i8 %t392 to i64
+  store i64 %t393, ptr %t391
+  %t394 = alloca i64
+  %t395 = call i8 @cur(ptr %t0)
+  %t396 = sext i8 %t395 to i64
+  store i64 %t396, ptr %t394
+  %t397 = load i64, ptr %t391
+  %t398 = sext i32 %t397 to i64
+  %t399 = add i64 %t398, 0
+  switch i64 %t399, label %L138 [
     i64 43, label %L114
     i64 45, label %L115
     i64 42, label %L116
@@ -1465,1295 +1495,1393 @@ L105:
     i64 58, label %L137
   ]
 L114:
-  %t384 = load i64, ptr %t378
-  %t386 = sext i32 %t384 to i64
-  %t387 = sext i32 43 to i64
-  %t385 = icmp eq i64 %t386, %t387
-  %t388 = zext i1 %t385 to i64
-  %t389 = icmp ne i64 %t388, 0
-  br i1 %t389, label %L139, label %L141
+  %t400 = load i64, ptr %t394
+  %t402 = sext i32 %t400 to i64
+  %t403 = sext i32 43 to i64
+  %t401 = icmp eq i64 %t402, %t403
+  %t404 = zext i1 %t401 to i64
+  %t405 = icmp ne i64 %t404, 0
+  br i1 %t405, label %L139, label %L141
 L139:
   br label %L142
 L142:
-  %t390 = call i8 @advance(ptr %t0)
-  %t391 = sext i8 %t390 to i64
+  %t406 = call i8 @advance(ptr %t0)
+  %t407 = sext i8 %t406 to i64
   br label %L145
 L145:
-  %t392 = sext i32 66 to i64
-  store i64 %t392, ptr %t2
-  %t393 = getelementptr [3 x i8], ptr @.str33, i64 0, i64 0
-  %t394 = call ptr @strdup(ptr %t393)
-  store ptr %t394, ptr %t2
-  %t395 = load i64, ptr %t2
-  %t396 = sext i32 %t395 to i64
-  ret i64 %t396
+  %t408 = getelementptr i8, ptr %t2, i64 0
+  %t409 = sext i32 66 to i64
+  store i64 %t409, ptr %t408
+  %t410 = getelementptr [3 x i8], ptr @.str33, i64 0, i64 0
+  %t411 = call ptr @strdup(ptr %t410)
+  %t412 = getelementptr i8, ptr %t2, i64 0
+  store ptr %t411, ptr %t412
+  %t413 = load i64, ptr %t2
+  %t414 = sext i32 %t413 to i64
+  ret i64 %t414
 L148:
   br label %L146
 L146:
-  %t398 = sext i32 0 to i64
-  %t397 = icmp ne i64 %t398, 0
-  br i1 %t397, label %L145, label %L147
+  %t416 = sext i32 0 to i64
+  %t415 = icmp ne i64 %t416, 0
+  br i1 %t415, label %L145, label %L147
 L147:
   br label %L143
 L143:
-  %t400 = sext i32 0 to i64
-  %t399 = icmp ne i64 %t400, 0
-  br i1 %t399, label %L142, label %L144
+  %t418 = sext i32 0 to i64
+  %t417 = icmp ne i64 %t418, 0
+  br i1 %t417, label %L142, label %L144
 L144:
   br label %L141
 L141:
-  %t401 = load i64, ptr %t378
-  %t403 = sext i32 %t401 to i64
-  %t404 = sext i32 61 to i64
-  %t402 = icmp eq i64 %t403, %t404
-  %t405 = zext i1 %t402 to i64
-  %t406 = icmp ne i64 %t405, 0
-  br i1 %t406, label %L149, label %L151
+  %t419 = load i64, ptr %t394
+  %t421 = sext i32 %t419 to i64
+  %t422 = sext i32 61 to i64
+  %t420 = icmp eq i64 %t421, %t422
+  %t423 = zext i1 %t420 to i64
+  %t424 = icmp ne i64 %t423, 0
+  br i1 %t424, label %L149, label %L151
 L149:
   br label %L152
 L152:
-  %t407 = call i8 @advance(ptr %t0)
-  %t408 = sext i8 %t407 to i64
+  %t425 = call i8 @advance(ptr %t0)
+  %t426 = sext i8 %t425 to i64
   br label %L155
 L155:
-  %t409 = sext i32 56 to i64
-  store i64 %t409, ptr %t2
-  %t410 = getelementptr [3 x i8], ptr @.str34, i64 0, i64 0
-  %t411 = call ptr @strdup(ptr %t410)
-  store ptr %t411, ptr %t2
-  %t412 = load i64, ptr %t2
-  %t413 = sext i32 %t412 to i64
-  ret i64 %t413
+  %t427 = getelementptr i8, ptr %t2, i64 0
+  %t428 = sext i32 56 to i64
+  store i64 %t428, ptr %t427
+  %t429 = getelementptr [3 x i8], ptr @.str34, i64 0, i64 0
+  %t430 = call ptr @strdup(ptr %t429)
+  %t431 = getelementptr i8, ptr %t2, i64 0
+  store ptr %t430, ptr %t431
+  %t432 = load i64, ptr %t2
+  %t433 = sext i32 %t432 to i64
+  ret i64 %t433
 L158:
   br label %L156
 L156:
-  %t415 = sext i32 0 to i64
-  %t414 = icmp ne i64 %t415, 0
-  br i1 %t414, label %L155, label %L157
+  %t435 = sext i32 0 to i64
+  %t434 = icmp ne i64 %t435, 0
+  br i1 %t434, label %L155, label %L157
 L157:
   br label %L153
 L153:
-  %t417 = sext i32 0 to i64
-  %t416 = icmp ne i64 %t417, 0
-  br i1 %t416, label %L152, label %L154
+  %t437 = sext i32 0 to i64
+  %t436 = icmp ne i64 %t437, 0
+  br i1 %t436, label %L152, label %L154
 L154:
   br label %L151
 L151:
   br label %L159
 L159:
-  %t418 = sext i32 35 to i64
-  store i64 %t418, ptr %t2
-  %t419 = getelementptr [2 x i8], ptr @.str35, i64 0, i64 0
-  %t420 = call ptr @strdup(ptr %t419)
-  store ptr %t420, ptr %t2
-  %t421 = load i64, ptr %t2
-  %t422 = sext i32 %t421 to i64
-  ret i64 %t422
+  %t438 = getelementptr i8, ptr %t2, i64 0
+  %t439 = sext i32 35 to i64
+  store i64 %t439, ptr %t438
+  %t440 = getelementptr [2 x i8], ptr @.str35, i64 0, i64 0
+  %t441 = call ptr @strdup(ptr %t440)
+  %t442 = getelementptr i8, ptr %t2, i64 0
+  store ptr %t441, ptr %t442
+  %t443 = load i64, ptr %t2
+  %t444 = sext i32 %t443 to i64
+  ret i64 %t444
 L162:
   br label %L160
 L160:
-  %t424 = sext i32 0 to i64
-  %t423 = icmp ne i64 %t424, 0
-  br i1 %t423, label %L159, label %L161
+  %t446 = sext i32 0 to i64
+  %t445 = icmp ne i64 %t446, 0
+  br i1 %t445, label %L159, label %L161
 L161:
   br label %L115
 L115:
-  %t425 = load i64, ptr %t378
-  %t427 = sext i32 %t425 to i64
-  %t428 = sext i32 45 to i64
-  %t426 = icmp eq i64 %t427, %t428
-  %t429 = zext i1 %t426 to i64
-  %t430 = icmp ne i64 %t429, 0
-  br i1 %t430, label %L163, label %L165
+  %t447 = load i64, ptr %t394
+  %t449 = sext i32 %t447 to i64
+  %t450 = sext i32 45 to i64
+  %t448 = icmp eq i64 %t449, %t450
+  %t451 = zext i1 %t448 to i64
+  %t452 = icmp ne i64 %t451, 0
+  br i1 %t452, label %L163, label %L165
 L163:
   br label %L166
 L166:
-  %t431 = call i8 @advance(ptr %t0)
-  %t432 = sext i8 %t431 to i64
+  %t453 = call i8 @advance(ptr %t0)
+  %t454 = sext i8 %t453 to i64
   br label %L169
 L169:
-  %t433 = sext i32 67 to i64
-  store i64 %t433, ptr %t2
-  %t434 = getelementptr [3 x i8], ptr @.str36, i64 0, i64 0
-  %t435 = call ptr @strdup(ptr %t434)
-  store ptr %t435, ptr %t2
-  %t436 = load i64, ptr %t2
-  %t437 = sext i32 %t436 to i64
-  ret i64 %t437
+  %t455 = getelementptr i8, ptr %t2, i64 0
+  %t456 = sext i32 67 to i64
+  store i64 %t456, ptr %t455
+  %t457 = getelementptr [3 x i8], ptr @.str36, i64 0, i64 0
+  %t458 = call ptr @strdup(ptr %t457)
+  %t459 = getelementptr i8, ptr %t2, i64 0
+  store ptr %t458, ptr %t459
+  %t460 = load i64, ptr %t2
+  %t461 = sext i32 %t460 to i64
+  ret i64 %t461
 L172:
   br label %L170
 L170:
-  %t439 = sext i32 0 to i64
-  %t438 = icmp ne i64 %t439, 0
-  br i1 %t438, label %L169, label %L171
+  %t463 = sext i32 0 to i64
+  %t462 = icmp ne i64 %t463, 0
+  br i1 %t462, label %L169, label %L171
 L171:
   br label %L167
 L167:
-  %t441 = sext i32 0 to i64
-  %t440 = icmp ne i64 %t441, 0
-  br i1 %t440, label %L166, label %L168
+  %t465 = sext i32 0 to i64
+  %t464 = icmp ne i64 %t465, 0
+  br i1 %t464, label %L166, label %L168
 L168:
   br label %L165
 L165:
-  %t442 = load i64, ptr %t378
-  %t444 = sext i32 %t442 to i64
-  %t445 = sext i32 61 to i64
-  %t443 = icmp eq i64 %t444, %t445
-  %t446 = zext i1 %t443 to i64
-  %t447 = icmp ne i64 %t446, 0
-  br i1 %t447, label %L173, label %L175
+  %t466 = load i64, ptr %t394
+  %t468 = sext i32 %t466 to i64
+  %t469 = sext i32 61 to i64
+  %t467 = icmp eq i64 %t468, %t469
+  %t470 = zext i1 %t467 to i64
+  %t471 = icmp ne i64 %t470, 0
+  br i1 %t471, label %L173, label %L175
 L173:
   br label %L176
 L176:
-  %t448 = call i8 @advance(ptr %t0)
-  %t449 = sext i8 %t448 to i64
+  %t472 = call i8 @advance(ptr %t0)
+  %t473 = sext i8 %t472 to i64
   br label %L179
 L179:
-  %t450 = sext i32 57 to i64
-  store i64 %t450, ptr %t2
-  %t451 = getelementptr [3 x i8], ptr @.str37, i64 0, i64 0
-  %t452 = call ptr @strdup(ptr %t451)
-  store ptr %t452, ptr %t2
-  %t453 = load i64, ptr %t2
-  %t454 = sext i32 %t453 to i64
-  ret i64 %t454
+  %t474 = getelementptr i8, ptr %t2, i64 0
+  %t475 = sext i32 57 to i64
+  store i64 %t475, ptr %t474
+  %t476 = getelementptr [3 x i8], ptr @.str37, i64 0, i64 0
+  %t477 = call ptr @strdup(ptr %t476)
+  %t478 = getelementptr i8, ptr %t2, i64 0
+  store ptr %t477, ptr %t478
+  %t479 = load i64, ptr %t2
+  %t480 = sext i32 %t479 to i64
+  ret i64 %t480
 L182:
   br label %L180
 L180:
-  %t456 = sext i32 0 to i64
-  %t455 = icmp ne i64 %t456, 0
-  br i1 %t455, label %L179, label %L181
+  %t482 = sext i32 0 to i64
+  %t481 = icmp ne i64 %t482, 0
+  br i1 %t481, label %L179, label %L181
 L181:
   br label %L177
 L177:
-  %t458 = sext i32 0 to i64
-  %t457 = icmp ne i64 %t458, 0
-  br i1 %t457, label %L176, label %L178
+  %t484 = sext i32 0 to i64
+  %t483 = icmp ne i64 %t484, 0
+  br i1 %t483, label %L176, label %L178
 L178:
   br label %L175
 L175:
-  %t459 = load i64, ptr %t378
-  %t461 = sext i32 %t459 to i64
-  %t462 = sext i32 62 to i64
-  %t460 = icmp eq i64 %t461, %t462
-  %t463 = zext i1 %t460 to i64
-  %t464 = icmp ne i64 %t463, 0
-  br i1 %t464, label %L183, label %L185
+  %t485 = load i64, ptr %t394
+  %t487 = sext i32 %t485 to i64
+  %t488 = sext i32 62 to i64
+  %t486 = icmp eq i64 %t487, %t488
+  %t489 = zext i1 %t486 to i64
+  %t490 = icmp ne i64 %t489, 0
+  br i1 %t490, label %L183, label %L185
 L183:
   br label %L186
 L186:
-  %t465 = call i8 @advance(ptr %t0)
-  %t466 = sext i8 %t465 to i64
+  %t491 = call i8 @advance(ptr %t0)
+  %t492 = sext i8 %t491 to i64
   br label %L189
 L189:
-  %t467 = sext i32 68 to i64
-  store i64 %t467, ptr %t2
-  %t468 = getelementptr [3 x i8], ptr @.str38, i64 0, i64 0
-  %t469 = call ptr @strdup(ptr %t468)
-  store ptr %t469, ptr %t2
-  %t470 = load i64, ptr %t2
-  %t471 = sext i32 %t470 to i64
-  ret i64 %t471
+  %t493 = getelementptr i8, ptr %t2, i64 0
+  %t494 = sext i32 68 to i64
+  store i64 %t494, ptr %t493
+  %t495 = getelementptr [3 x i8], ptr @.str38, i64 0, i64 0
+  %t496 = call ptr @strdup(ptr %t495)
+  %t497 = getelementptr i8, ptr %t2, i64 0
+  store ptr %t496, ptr %t497
+  %t498 = load i64, ptr %t2
+  %t499 = sext i32 %t498 to i64
+  ret i64 %t499
 L192:
   br label %L190
 L190:
-  %t473 = sext i32 0 to i64
-  %t472 = icmp ne i64 %t473, 0
-  br i1 %t472, label %L189, label %L191
+  %t501 = sext i32 0 to i64
+  %t500 = icmp ne i64 %t501, 0
+  br i1 %t500, label %L189, label %L191
 L191:
   br label %L187
 L187:
-  %t475 = sext i32 0 to i64
-  %t474 = icmp ne i64 %t475, 0
-  br i1 %t474, label %L186, label %L188
+  %t503 = sext i32 0 to i64
+  %t502 = icmp ne i64 %t503, 0
+  br i1 %t502, label %L186, label %L188
 L188:
   br label %L185
 L185:
   br label %L193
 L193:
-  %t476 = sext i32 36 to i64
-  store i64 %t476, ptr %t2
-  %t477 = getelementptr [2 x i8], ptr @.str39, i64 0, i64 0
-  %t478 = call ptr @strdup(ptr %t477)
-  store ptr %t478, ptr %t2
-  %t479 = load i64, ptr %t2
-  %t480 = sext i32 %t479 to i64
-  ret i64 %t480
+  %t504 = getelementptr i8, ptr %t2, i64 0
+  %t505 = sext i32 36 to i64
+  store i64 %t505, ptr %t504
+  %t506 = getelementptr [2 x i8], ptr @.str39, i64 0, i64 0
+  %t507 = call ptr @strdup(ptr %t506)
+  %t508 = getelementptr i8, ptr %t2, i64 0
+  store ptr %t507, ptr %t508
+  %t509 = load i64, ptr %t2
+  %t510 = sext i32 %t509 to i64
+  ret i64 %t510
 L196:
   br label %L194
 L194:
-  %t482 = sext i32 0 to i64
-  %t481 = icmp ne i64 %t482, 0
-  br i1 %t481, label %L193, label %L195
+  %t512 = sext i32 0 to i64
+  %t511 = icmp ne i64 %t512, 0
+  br i1 %t511, label %L193, label %L195
 L195:
   br label %L116
 L116:
-  %t483 = load i64, ptr %t378
-  %t485 = sext i32 %t483 to i64
-  %t486 = sext i32 61 to i64
-  %t484 = icmp eq i64 %t485, %t486
-  %t487 = zext i1 %t484 to i64
-  %t488 = icmp ne i64 %t487, 0
-  br i1 %t488, label %L197, label %L199
+  %t513 = load i64, ptr %t394
+  %t515 = sext i32 %t513 to i64
+  %t516 = sext i32 61 to i64
+  %t514 = icmp eq i64 %t515, %t516
+  %t517 = zext i1 %t514 to i64
+  %t518 = icmp ne i64 %t517, 0
+  br i1 %t518, label %L197, label %L199
 L197:
   br label %L200
 L200:
-  %t489 = call i8 @advance(ptr %t0)
-  %t490 = sext i8 %t489 to i64
+  %t519 = call i8 @advance(ptr %t0)
+  %t520 = sext i8 %t519 to i64
   br label %L203
 L203:
-  %t491 = sext i32 58 to i64
-  store i64 %t491, ptr %t2
-  %t492 = getelementptr [3 x i8], ptr @.str40, i64 0, i64 0
-  %t493 = call ptr @strdup(ptr %t492)
-  store ptr %t493, ptr %t2
-  %t494 = load i64, ptr %t2
-  %t495 = sext i32 %t494 to i64
-  ret i64 %t495
+  %t521 = getelementptr i8, ptr %t2, i64 0
+  %t522 = sext i32 58 to i64
+  store i64 %t522, ptr %t521
+  %t523 = getelementptr [3 x i8], ptr @.str40, i64 0, i64 0
+  %t524 = call ptr @strdup(ptr %t523)
+  %t525 = getelementptr i8, ptr %t2, i64 0
+  store ptr %t524, ptr %t525
+  %t526 = load i64, ptr %t2
+  %t527 = sext i32 %t526 to i64
+  ret i64 %t527
 L206:
   br label %L204
 L204:
-  %t497 = sext i32 0 to i64
-  %t496 = icmp ne i64 %t497, 0
-  br i1 %t496, label %L203, label %L205
+  %t529 = sext i32 0 to i64
+  %t528 = icmp ne i64 %t529, 0
+  br i1 %t528, label %L203, label %L205
 L205:
   br label %L201
 L201:
-  %t499 = sext i32 0 to i64
-  %t498 = icmp ne i64 %t499, 0
-  br i1 %t498, label %L200, label %L202
+  %t531 = sext i32 0 to i64
+  %t530 = icmp ne i64 %t531, 0
+  br i1 %t530, label %L200, label %L202
 L202:
   br label %L199
 L199:
   br label %L207
 L207:
-  %t500 = sext i32 37 to i64
-  store i64 %t500, ptr %t2
-  %t501 = getelementptr [2 x i8], ptr @.str41, i64 0, i64 0
-  %t502 = call ptr @strdup(ptr %t501)
-  store ptr %t502, ptr %t2
-  %t503 = load i64, ptr %t2
-  %t504 = sext i32 %t503 to i64
-  ret i64 %t504
+  %t532 = getelementptr i8, ptr %t2, i64 0
+  %t533 = sext i32 37 to i64
+  store i64 %t533, ptr %t532
+  %t534 = getelementptr [2 x i8], ptr @.str41, i64 0, i64 0
+  %t535 = call ptr @strdup(ptr %t534)
+  %t536 = getelementptr i8, ptr %t2, i64 0
+  store ptr %t535, ptr %t536
+  %t537 = load i64, ptr %t2
+  %t538 = sext i32 %t537 to i64
+  ret i64 %t538
 L210:
   br label %L208
 L208:
-  %t506 = sext i32 0 to i64
-  %t505 = icmp ne i64 %t506, 0
-  br i1 %t505, label %L207, label %L209
+  %t540 = sext i32 0 to i64
+  %t539 = icmp ne i64 %t540, 0
+  br i1 %t539, label %L207, label %L209
 L209:
   br label %L117
 L117:
-  %t507 = load i64, ptr %t378
-  %t509 = sext i32 %t507 to i64
-  %t510 = sext i32 61 to i64
-  %t508 = icmp eq i64 %t509, %t510
-  %t511 = zext i1 %t508 to i64
-  %t512 = icmp ne i64 %t511, 0
-  br i1 %t512, label %L211, label %L213
+  %t541 = load i64, ptr %t394
+  %t543 = sext i32 %t541 to i64
+  %t544 = sext i32 61 to i64
+  %t542 = icmp eq i64 %t543, %t544
+  %t545 = zext i1 %t542 to i64
+  %t546 = icmp ne i64 %t545, 0
+  br i1 %t546, label %L211, label %L213
 L211:
   br label %L214
 L214:
-  %t513 = call i8 @advance(ptr %t0)
-  %t514 = sext i8 %t513 to i64
+  %t547 = call i8 @advance(ptr %t0)
+  %t548 = sext i8 %t547 to i64
   br label %L217
 L217:
-  %t515 = sext i32 59 to i64
-  store i64 %t515, ptr %t2
-  %t516 = getelementptr [3 x i8], ptr @.str42, i64 0, i64 0
-  %t517 = call ptr @strdup(ptr %t516)
-  store ptr %t517, ptr %t2
-  %t518 = load i64, ptr %t2
-  %t519 = sext i32 %t518 to i64
-  ret i64 %t519
+  %t549 = getelementptr i8, ptr %t2, i64 0
+  %t550 = sext i32 59 to i64
+  store i64 %t550, ptr %t549
+  %t551 = getelementptr [3 x i8], ptr @.str42, i64 0, i64 0
+  %t552 = call ptr @strdup(ptr %t551)
+  %t553 = getelementptr i8, ptr %t2, i64 0
+  store ptr %t552, ptr %t553
+  %t554 = load i64, ptr %t2
+  %t555 = sext i32 %t554 to i64
+  ret i64 %t555
 L220:
   br label %L218
 L218:
-  %t521 = sext i32 0 to i64
-  %t520 = icmp ne i64 %t521, 0
-  br i1 %t520, label %L217, label %L219
+  %t557 = sext i32 0 to i64
+  %t556 = icmp ne i64 %t557, 0
+  br i1 %t556, label %L217, label %L219
 L219:
   br label %L215
 L215:
-  %t523 = sext i32 0 to i64
-  %t522 = icmp ne i64 %t523, 0
-  br i1 %t522, label %L214, label %L216
+  %t559 = sext i32 0 to i64
+  %t558 = icmp ne i64 %t559, 0
+  br i1 %t558, label %L214, label %L216
 L216:
   br label %L213
 L213:
   br label %L221
 L221:
-  %t524 = sext i32 38 to i64
-  store i64 %t524, ptr %t2
-  %t525 = getelementptr [2 x i8], ptr @.str43, i64 0, i64 0
-  %t526 = call ptr @strdup(ptr %t525)
-  store ptr %t526, ptr %t2
-  %t527 = load i64, ptr %t2
-  %t528 = sext i32 %t527 to i64
-  ret i64 %t528
+  %t560 = getelementptr i8, ptr %t2, i64 0
+  %t561 = sext i32 38 to i64
+  store i64 %t561, ptr %t560
+  %t562 = getelementptr [2 x i8], ptr @.str43, i64 0, i64 0
+  %t563 = call ptr @strdup(ptr %t562)
+  %t564 = getelementptr i8, ptr %t2, i64 0
+  store ptr %t563, ptr %t564
+  %t565 = load i64, ptr %t2
+  %t566 = sext i32 %t565 to i64
+  ret i64 %t566
 L224:
   br label %L222
 L222:
-  %t530 = sext i32 0 to i64
-  %t529 = icmp ne i64 %t530, 0
-  br i1 %t529, label %L221, label %L223
+  %t568 = sext i32 0 to i64
+  %t567 = icmp ne i64 %t568, 0
+  br i1 %t567, label %L221, label %L223
 L223:
   br label %L118
 L118:
-  %t531 = load i64, ptr %t378
-  %t533 = sext i32 %t531 to i64
-  %t534 = sext i32 61 to i64
-  %t532 = icmp eq i64 %t533, %t534
-  %t535 = zext i1 %t532 to i64
-  %t536 = icmp ne i64 %t535, 0
-  br i1 %t536, label %L225, label %L227
+  %t569 = load i64, ptr %t394
+  %t571 = sext i32 %t569 to i64
+  %t572 = sext i32 61 to i64
+  %t570 = icmp eq i64 %t571, %t572
+  %t573 = zext i1 %t570 to i64
+  %t574 = icmp ne i64 %t573, 0
+  br i1 %t574, label %L225, label %L227
 L225:
   br label %L228
 L228:
-  %t537 = call i8 @advance(ptr %t0)
-  %t538 = sext i8 %t537 to i64
+  %t575 = call i8 @advance(ptr %t0)
+  %t576 = sext i8 %t575 to i64
   br label %L231
 L231:
-  %t539 = sext i32 65 to i64
-  store i64 %t539, ptr %t2
-  %t540 = getelementptr [3 x i8], ptr @.str44, i64 0, i64 0
-  %t541 = call ptr @strdup(ptr %t540)
-  store ptr %t541, ptr %t2
-  %t542 = load i64, ptr %t2
-  %t543 = sext i32 %t542 to i64
-  ret i64 %t543
+  %t577 = getelementptr i8, ptr %t2, i64 0
+  %t578 = sext i32 65 to i64
+  store i64 %t578, ptr %t577
+  %t579 = getelementptr [3 x i8], ptr @.str44, i64 0, i64 0
+  %t580 = call ptr @strdup(ptr %t579)
+  %t581 = getelementptr i8, ptr %t2, i64 0
+  store ptr %t580, ptr %t581
+  %t582 = load i64, ptr %t2
+  %t583 = sext i32 %t582 to i64
+  ret i64 %t583
 L234:
   br label %L232
 L232:
-  %t545 = sext i32 0 to i64
-  %t544 = icmp ne i64 %t545, 0
-  br i1 %t544, label %L231, label %L233
+  %t585 = sext i32 0 to i64
+  %t584 = icmp ne i64 %t585, 0
+  br i1 %t584, label %L231, label %L233
 L233:
   br label %L229
 L229:
-  %t547 = sext i32 0 to i64
-  %t546 = icmp ne i64 %t547, 0
-  br i1 %t546, label %L228, label %L230
+  %t587 = sext i32 0 to i64
+  %t586 = icmp ne i64 %t587, 0
+  br i1 %t586, label %L228, label %L230
 L230:
   br label %L227
 L227:
   br label %L235
 L235:
-  %t548 = sext i32 39 to i64
-  store i64 %t548, ptr %t2
-  %t549 = getelementptr [2 x i8], ptr @.str45, i64 0, i64 0
-  %t550 = call ptr @strdup(ptr %t549)
-  store ptr %t550, ptr %t2
-  %t551 = load i64, ptr %t2
-  %t552 = sext i32 %t551 to i64
-  ret i64 %t552
+  %t588 = getelementptr i8, ptr %t2, i64 0
+  %t589 = sext i32 39 to i64
+  store i64 %t589, ptr %t588
+  %t590 = getelementptr [2 x i8], ptr @.str45, i64 0, i64 0
+  %t591 = call ptr @strdup(ptr %t590)
+  %t592 = getelementptr i8, ptr %t2, i64 0
+  store ptr %t591, ptr %t592
+  %t593 = load i64, ptr %t2
+  %t594 = sext i32 %t593 to i64
+  ret i64 %t594
 L238:
   br label %L236
 L236:
-  %t554 = sext i32 0 to i64
-  %t553 = icmp ne i64 %t554, 0
-  br i1 %t553, label %L235, label %L237
+  %t596 = sext i32 0 to i64
+  %t595 = icmp ne i64 %t596, 0
+  br i1 %t595, label %L235, label %L237
 L237:
   br label %L119
 L119:
-  %t555 = load i64, ptr %t378
-  %t557 = sext i32 %t555 to i64
-  %t558 = sext i32 38 to i64
-  %t556 = icmp eq i64 %t557, %t558
-  %t559 = zext i1 %t556 to i64
-  %t560 = icmp ne i64 %t559, 0
-  br i1 %t560, label %L239, label %L241
+  %t597 = load i64, ptr %t394
+  %t599 = sext i32 %t597 to i64
+  %t600 = sext i32 38 to i64
+  %t598 = icmp eq i64 %t599, %t600
+  %t601 = zext i1 %t598 to i64
+  %t602 = icmp ne i64 %t601, 0
+  br i1 %t602, label %L239, label %L241
 L239:
   br label %L242
 L242:
-  %t561 = call i8 @advance(ptr %t0)
-  %t562 = sext i8 %t561 to i64
+  %t603 = call i8 @advance(ptr %t0)
+  %t604 = sext i8 %t603 to i64
   br label %L245
 L245:
-  %t563 = sext i32 52 to i64
-  store i64 %t563, ptr %t2
-  %t564 = getelementptr [3 x i8], ptr @.str46, i64 0, i64 0
-  %t565 = call ptr @strdup(ptr %t564)
-  store ptr %t565, ptr %t2
-  %t566 = load i64, ptr %t2
-  %t567 = sext i32 %t566 to i64
-  ret i64 %t567
+  %t605 = getelementptr i8, ptr %t2, i64 0
+  %t606 = sext i32 52 to i64
+  store i64 %t606, ptr %t605
+  %t607 = getelementptr [3 x i8], ptr @.str46, i64 0, i64 0
+  %t608 = call ptr @strdup(ptr %t607)
+  %t609 = getelementptr i8, ptr %t2, i64 0
+  store ptr %t608, ptr %t609
+  %t610 = load i64, ptr %t2
+  %t611 = sext i32 %t610 to i64
+  ret i64 %t611
 L248:
   br label %L246
 L246:
-  %t569 = sext i32 0 to i64
-  %t568 = icmp ne i64 %t569, 0
-  br i1 %t568, label %L245, label %L247
+  %t613 = sext i32 0 to i64
+  %t612 = icmp ne i64 %t613, 0
+  br i1 %t612, label %L245, label %L247
 L247:
   br label %L243
 L243:
-  %t571 = sext i32 0 to i64
-  %t570 = icmp ne i64 %t571, 0
-  br i1 %t570, label %L242, label %L244
+  %t615 = sext i32 0 to i64
+  %t614 = icmp ne i64 %t615, 0
+  br i1 %t614, label %L242, label %L244
 L244:
   br label %L241
 L241:
-  %t572 = load i64, ptr %t378
-  %t574 = sext i32 %t572 to i64
-  %t575 = sext i32 61 to i64
-  %t573 = icmp eq i64 %t574, %t575
-  %t576 = zext i1 %t573 to i64
-  %t577 = icmp ne i64 %t576, 0
-  br i1 %t577, label %L249, label %L251
+  %t616 = load i64, ptr %t394
+  %t618 = sext i32 %t616 to i64
+  %t619 = sext i32 61 to i64
+  %t617 = icmp eq i64 %t618, %t619
+  %t620 = zext i1 %t617 to i64
+  %t621 = icmp ne i64 %t620, 0
+  br i1 %t621, label %L249, label %L251
 L249:
   br label %L252
 L252:
-  %t578 = call i8 @advance(ptr %t0)
-  %t579 = sext i8 %t578 to i64
+  %t622 = call i8 @advance(ptr %t0)
+  %t623 = sext i8 %t622 to i64
   br label %L255
 L255:
-  %t580 = sext i32 60 to i64
-  store i64 %t580, ptr %t2
-  %t581 = getelementptr [3 x i8], ptr @.str47, i64 0, i64 0
-  %t582 = call ptr @strdup(ptr %t581)
-  store ptr %t582, ptr %t2
-  %t583 = load i64, ptr %t2
-  %t584 = sext i32 %t583 to i64
-  ret i64 %t584
+  %t624 = getelementptr i8, ptr %t2, i64 0
+  %t625 = sext i32 60 to i64
+  store i64 %t625, ptr %t624
+  %t626 = getelementptr [3 x i8], ptr @.str47, i64 0, i64 0
+  %t627 = call ptr @strdup(ptr %t626)
+  %t628 = getelementptr i8, ptr %t2, i64 0
+  store ptr %t627, ptr %t628
+  %t629 = load i64, ptr %t2
+  %t630 = sext i32 %t629 to i64
+  ret i64 %t630
 L258:
   br label %L256
 L256:
-  %t586 = sext i32 0 to i64
-  %t585 = icmp ne i64 %t586, 0
-  br i1 %t585, label %L255, label %L257
+  %t632 = sext i32 0 to i64
+  %t631 = icmp ne i64 %t632, 0
+  br i1 %t631, label %L255, label %L257
 L257:
   br label %L253
 L253:
-  %t588 = sext i32 0 to i64
-  %t587 = icmp ne i64 %t588, 0
-  br i1 %t587, label %L252, label %L254
+  %t634 = sext i32 0 to i64
+  %t633 = icmp ne i64 %t634, 0
+  br i1 %t633, label %L252, label %L254
 L254:
   br label %L251
 L251:
   br label %L259
 L259:
-  %t589 = sext i32 40 to i64
-  store i64 %t589, ptr %t2
-  %t590 = getelementptr [2 x i8], ptr @.str48, i64 0, i64 0
-  %t591 = call ptr @strdup(ptr %t590)
-  store ptr %t591, ptr %t2
-  %t592 = load i64, ptr %t2
-  %t593 = sext i32 %t592 to i64
-  ret i64 %t593
+  %t635 = getelementptr i8, ptr %t2, i64 0
+  %t636 = sext i32 40 to i64
+  store i64 %t636, ptr %t635
+  %t637 = getelementptr [2 x i8], ptr @.str48, i64 0, i64 0
+  %t638 = call ptr @strdup(ptr %t637)
+  %t639 = getelementptr i8, ptr %t2, i64 0
+  store ptr %t638, ptr %t639
+  %t640 = load i64, ptr %t2
+  %t641 = sext i32 %t640 to i64
+  ret i64 %t641
 L262:
   br label %L260
 L260:
-  %t595 = sext i32 0 to i64
-  %t594 = icmp ne i64 %t595, 0
-  br i1 %t594, label %L259, label %L261
+  %t643 = sext i32 0 to i64
+  %t642 = icmp ne i64 %t643, 0
+  br i1 %t642, label %L259, label %L261
 L261:
   br label %L120
 L120:
-  %t596 = load i64, ptr %t378
-  %t598 = sext i32 %t596 to i64
-  %t599 = sext i32 124 to i64
-  %t597 = icmp eq i64 %t598, %t599
-  %t600 = zext i1 %t597 to i64
-  %t601 = icmp ne i64 %t600, 0
-  br i1 %t601, label %L263, label %L265
+  %t644 = load i64, ptr %t394
+  %t646 = sext i32 %t644 to i64
+  %t647 = sext i32 124 to i64
+  %t645 = icmp eq i64 %t646, %t647
+  %t648 = zext i1 %t645 to i64
+  %t649 = icmp ne i64 %t648, 0
+  br i1 %t649, label %L263, label %L265
 L263:
   br label %L266
 L266:
-  %t602 = call i8 @advance(ptr %t0)
-  %t603 = sext i8 %t602 to i64
+  %t650 = call i8 @advance(ptr %t0)
+  %t651 = sext i8 %t650 to i64
   br label %L269
 L269:
-  %t604 = sext i32 53 to i64
-  store i64 %t604, ptr %t2
-  %t605 = getelementptr [3 x i8], ptr @.str49, i64 0, i64 0
-  %t606 = call ptr @strdup(ptr %t605)
-  store ptr %t606, ptr %t2
-  %t607 = load i64, ptr %t2
-  %t608 = sext i32 %t607 to i64
-  ret i64 %t608
+  %t652 = getelementptr i8, ptr %t2, i64 0
+  %t653 = sext i32 53 to i64
+  store i64 %t653, ptr %t652
+  %t654 = getelementptr [3 x i8], ptr @.str49, i64 0, i64 0
+  %t655 = call ptr @strdup(ptr %t654)
+  %t656 = getelementptr i8, ptr %t2, i64 0
+  store ptr %t655, ptr %t656
+  %t657 = load i64, ptr %t2
+  %t658 = sext i32 %t657 to i64
+  ret i64 %t658
 L272:
   br label %L270
 L270:
-  %t610 = sext i32 0 to i64
-  %t609 = icmp ne i64 %t610, 0
-  br i1 %t609, label %L269, label %L271
+  %t660 = sext i32 0 to i64
+  %t659 = icmp ne i64 %t660, 0
+  br i1 %t659, label %L269, label %L271
 L271:
   br label %L267
 L267:
-  %t612 = sext i32 0 to i64
-  %t611 = icmp ne i64 %t612, 0
-  br i1 %t611, label %L266, label %L268
+  %t662 = sext i32 0 to i64
+  %t661 = icmp ne i64 %t662, 0
+  br i1 %t661, label %L266, label %L268
 L268:
   br label %L265
 L265:
-  %t613 = load i64, ptr %t378
-  %t615 = sext i32 %t613 to i64
-  %t616 = sext i32 61 to i64
-  %t614 = icmp eq i64 %t615, %t616
-  %t617 = zext i1 %t614 to i64
-  %t618 = icmp ne i64 %t617, 0
-  br i1 %t618, label %L273, label %L275
+  %t663 = load i64, ptr %t394
+  %t665 = sext i32 %t663 to i64
+  %t666 = sext i32 61 to i64
+  %t664 = icmp eq i64 %t665, %t666
+  %t667 = zext i1 %t664 to i64
+  %t668 = icmp ne i64 %t667, 0
+  br i1 %t668, label %L273, label %L275
 L273:
   br label %L276
 L276:
-  %t619 = call i8 @advance(ptr %t0)
-  %t620 = sext i8 %t619 to i64
+  %t669 = call i8 @advance(ptr %t0)
+  %t670 = sext i8 %t669 to i64
   br label %L279
 L279:
-  %t621 = sext i32 61 to i64
-  store i64 %t621, ptr %t2
-  %t622 = getelementptr [3 x i8], ptr @.str50, i64 0, i64 0
-  %t623 = call ptr @strdup(ptr %t622)
-  store ptr %t623, ptr %t2
-  %t624 = load i64, ptr %t2
-  %t625 = sext i32 %t624 to i64
-  ret i64 %t625
+  %t671 = getelementptr i8, ptr %t2, i64 0
+  %t672 = sext i32 61 to i64
+  store i64 %t672, ptr %t671
+  %t673 = getelementptr [3 x i8], ptr @.str50, i64 0, i64 0
+  %t674 = call ptr @strdup(ptr %t673)
+  %t675 = getelementptr i8, ptr %t2, i64 0
+  store ptr %t674, ptr %t675
+  %t676 = load i64, ptr %t2
+  %t677 = sext i32 %t676 to i64
+  ret i64 %t677
 L282:
   br label %L280
 L280:
-  %t627 = sext i32 0 to i64
-  %t626 = icmp ne i64 %t627, 0
-  br i1 %t626, label %L279, label %L281
+  %t679 = sext i32 0 to i64
+  %t678 = icmp ne i64 %t679, 0
+  br i1 %t678, label %L279, label %L281
 L281:
   br label %L277
 L277:
-  %t629 = sext i32 0 to i64
-  %t628 = icmp ne i64 %t629, 0
-  br i1 %t628, label %L276, label %L278
+  %t681 = sext i32 0 to i64
+  %t680 = icmp ne i64 %t681, 0
+  br i1 %t680, label %L276, label %L278
 L278:
   br label %L275
 L275:
   br label %L283
 L283:
-  %t630 = sext i32 41 to i64
-  store i64 %t630, ptr %t2
-  %t631 = getelementptr [2 x i8], ptr @.str51, i64 0, i64 0
-  %t632 = call ptr @strdup(ptr %t631)
-  store ptr %t632, ptr %t2
-  %t633 = load i64, ptr %t2
-  %t634 = sext i32 %t633 to i64
-  ret i64 %t634
+  %t682 = getelementptr i8, ptr %t2, i64 0
+  %t683 = sext i32 41 to i64
+  store i64 %t683, ptr %t682
+  %t684 = getelementptr [2 x i8], ptr @.str51, i64 0, i64 0
+  %t685 = call ptr @strdup(ptr %t684)
+  %t686 = getelementptr i8, ptr %t2, i64 0
+  store ptr %t685, ptr %t686
+  %t687 = load i64, ptr %t2
+  %t688 = sext i32 %t687 to i64
+  ret i64 %t688
 L286:
   br label %L284
 L284:
-  %t636 = sext i32 0 to i64
-  %t635 = icmp ne i64 %t636, 0
-  br i1 %t635, label %L283, label %L285
+  %t690 = sext i32 0 to i64
+  %t689 = icmp ne i64 %t690, 0
+  br i1 %t689, label %L283, label %L285
 L285:
   br label %L121
 L121:
-  %t637 = load i64, ptr %t378
-  %t639 = sext i32 %t637 to i64
-  %t640 = sext i32 61 to i64
-  %t638 = icmp eq i64 %t639, %t640
-  %t641 = zext i1 %t638 to i64
-  %t642 = icmp ne i64 %t641, 0
-  br i1 %t642, label %L287, label %L289
+  %t691 = load i64, ptr %t394
+  %t693 = sext i32 %t691 to i64
+  %t694 = sext i32 61 to i64
+  %t692 = icmp eq i64 %t693, %t694
+  %t695 = zext i1 %t692 to i64
+  %t696 = icmp ne i64 %t695, 0
+  br i1 %t696, label %L287, label %L289
 L287:
   br label %L290
 L290:
-  %t643 = call i8 @advance(ptr %t0)
-  %t644 = sext i8 %t643 to i64
+  %t697 = call i8 @advance(ptr %t0)
+  %t698 = sext i8 %t697 to i64
   br label %L293
 L293:
-  %t645 = sext i32 62 to i64
-  store i64 %t645, ptr %t2
-  %t646 = getelementptr [3 x i8], ptr @.str52, i64 0, i64 0
-  %t647 = call ptr @strdup(ptr %t646)
-  store ptr %t647, ptr %t2
-  %t648 = load i64, ptr %t2
-  %t649 = sext i32 %t648 to i64
-  ret i64 %t649
+  %t699 = getelementptr i8, ptr %t2, i64 0
+  %t700 = sext i32 62 to i64
+  store i64 %t700, ptr %t699
+  %t701 = getelementptr [3 x i8], ptr @.str52, i64 0, i64 0
+  %t702 = call ptr @strdup(ptr %t701)
+  %t703 = getelementptr i8, ptr %t2, i64 0
+  store ptr %t702, ptr %t703
+  %t704 = load i64, ptr %t2
+  %t705 = sext i32 %t704 to i64
+  ret i64 %t705
 L296:
   br label %L294
 L294:
-  %t651 = sext i32 0 to i64
-  %t650 = icmp ne i64 %t651, 0
-  br i1 %t650, label %L293, label %L295
+  %t707 = sext i32 0 to i64
+  %t706 = icmp ne i64 %t707, 0
+  br i1 %t706, label %L293, label %L295
 L295:
   br label %L291
 L291:
-  %t653 = sext i32 0 to i64
-  %t652 = icmp ne i64 %t653, 0
-  br i1 %t652, label %L290, label %L292
+  %t709 = sext i32 0 to i64
+  %t708 = icmp ne i64 %t709, 0
+  br i1 %t708, label %L290, label %L292
 L292:
   br label %L289
 L289:
   br label %L297
 L297:
-  %t654 = sext i32 42 to i64
-  store i64 %t654, ptr %t2
-  %t655 = getelementptr [2 x i8], ptr @.str53, i64 0, i64 0
-  %t656 = call ptr @strdup(ptr %t655)
-  store ptr %t656, ptr %t2
-  %t657 = load i64, ptr %t2
-  %t658 = sext i32 %t657 to i64
-  ret i64 %t658
+  %t710 = getelementptr i8, ptr %t2, i64 0
+  %t711 = sext i32 42 to i64
+  store i64 %t711, ptr %t710
+  %t712 = getelementptr [2 x i8], ptr @.str53, i64 0, i64 0
+  %t713 = call ptr @strdup(ptr %t712)
+  %t714 = getelementptr i8, ptr %t2, i64 0
+  store ptr %t713, ptr %t714
+  %t715 = load i64, ptr %t2
+  %t716 = sext i32 %t715 to i64
+  ret i64 %t716
 L300:
   br label %L298
 L298:
-  %t660 = sext i32 0 to i64
-  %t659 = icmp ne i64 %t660, 0
-  br i1 %t659, label %L297, label %L299
+  %t718 = sext i32 0 to i64
+  %t717 = icmp ne i64 %t718, 0
+  br i1 %t717, label %L297, label %L299
 L299:
   br label %L122
 L122:
   br label %L301
 L301:
-  %t661 = sext i32 43 to i64
-  store i64 %t661, ptr %t2
-  %t662 = getelementptr [2 x i8], ptr @.str54, i64 0, i64 0
-  %t663 = call ptr @strdup(ptr %t662)
-  store ptr %t663, ptr %t2
-  %t664 = load i64, ptr %t2
-  %t665 = sext i32 %t664 to i64
-  ret i64 %t665
+  %t719 = getelementptr i8, ptr %t2, i64 0
+  %t720 = sext i32 43 to i64
+  store i64 %t720, ptr %t719
+  %t721 = getelementptr [2 x i8], ptr @.str54, i64 0, i64 0
+  %t722 = call ptr @strdup(ptr %t721)
+  %t723 = getelementptr i8, ptr %t2, i64 0
+  store ptr %t722, ptr %t723
+  %t724 = load i64, ptr %t2
+  %t725 = sext i32 %t724 to i64
+  ret i64 %t725
 L304:
   br label %L302
 L302:
-  %t667 = sext i32 0 to i64
-  %t666 = icmp ne i64 %t667, 0
-  br i1 %t666, label %L301, label %L303
+  %t727 = sext i32 0 to i64
+  %t726 = icmp ne i64 %t727, 0
+  br i1 %t726, label %L301, label %L303
 L303:
   br label %L123
 L123:
-  %t668 = load i64, ptr %t378
-  %t670 = sext i32 %t668 to i64
-  %t671 = sext i32 60 to i64
-  %t669 = icmp eq i64 %t670, %t671
-  %t672 = zext i1 %t669 to i64
-  %t673 = icmp ne i64 %t672, 0
-  br i1 %t673, label %L305, label %L307
+  %t728 = load i64, ptr %t394
+  %t730 = sext i32 %t728 to i64
+  %t731 = sext i32 60 to i64
+  %t729 = icmp eq i64 %t730, %t731
+  %t732 = zext i1 %t729 to i64
+  %t733 = icmp ne i64 %t732, 0
+  br i1 %t733, label %L305, label %L307
 L305:
-  %t674 = call i8 @advance(ptr %t0)
-  %t675 = sext i8 %t674 to i64
-  %t676 = call i8 @cur(ptr %t0)
-  %t677 = sext i8 %t676 to i64
-  %t679 = sext i32 61 to i64
-  %t678 = icmp eq i64 %t677, %t679
-  %t680 = zext i1 %t678 to i64
-  %t681 = icmp ne i64 %t680, 0
-  br i1 %t681, label %L308, label %L310
+  %t734 = call i8 @advance(ptr %t0)
+  %t735 = sext i8 %t734 to i64
+  %t736 = call i8 @cur(ptr %t0)
+  %t737 = sext i8 %t736 to i64
+  %t739 = sext i32 61 to i64
+  %t738 = icmp eq i64 %t737, %t739
+  %t740 = zext i1 %t738 to i64
+  %t741 = icmp ne i64 %t740, 0
+  br i1 %t741, label %L308, label %L310
 L308:
   br label %L311
 L311:
-  %t682 = call i8 @advance(ptr %t0)
-  %t683 = sext i8 %t682 to i64
+  %t742 = call i8 @advance(ptr %t0)
+  %t743 = sext i8 %t742 to i64
   br label %L314
 L314:
-  %t684 = sext i32 63 to i64
-  store i64 %t684, ptr %t2
-  %t685 = getelementptr [4 x i8], ptr @.str55, i64 0, i64 0
-  %t686 = call ptr @strdup(ptr %t685)
-  store ptr %t686, ptr %t2
-  %t687 = load i64, ptr %t2
-  %t688 = sext i32 %t687 to i64
-  ret i64 %t688
+  %t744 = getelementptr i8, ptr %t2, i64 0
+  %t745 = sext i32 63 to i64
+  store i64 %t745, ptr %t744
+  %t746 = getelementptr [4 x i8], ptr @.str55, i64 0, i64 0
+  %t747 = call ptr @strdup(ptr %t746)
+  %t748 = getelementptr i8, ptr %t2, i64 0
+  store ptr %t747, ptr %t748
+  %t749 = load i64, ptr %t2
+  %t750 = sext i32 %t749 to i64
+  ret i64 %t750
 L317:
   br label %L315
 L315:
-  %t690 = sext i32 0 to i64
-  %t689 = icmp ne i64 %t690, 0
-  br i1 %t689, label %L314, label %L316
+  %t752 = sext i32 0 to i64
+  %t751 = icmp ne i64 %t752, 0
+  br i1 %t751, label %L314, label %L316
 L316:
   br label %L312
 L312:
-  %t692 = sext i32 0 to i64
-  %t691 = icmp ne i64 %t692, 0
-  br i1 %t691, label %L311, label %L313
+  %t754 = sext i32 0 to i64
+  %t753 = icmp ne i64 %t754, 0
+  br i1 %t753, label %L311, label %L313
 L313:
   br label %L310
 L310:
   br label %L318
 L318:
-  %t693 = sext i32 44 to i64
-  store i64 %t693, ptr %t2
-  %t694 = getelementptr [3 x i8], ptr @.str56, i64 0, i64 0
-  %t695 = call ptr @strdup(ptr %t694)
-  store ptr %t695, ptr %t2
-  %t696 = load i64, ptr %t2
-  %t697 = sext i32 %t696 to i64
-  ret i64 %t697
+  %t755 = getelementptr i8, ptr %t2, i64 0
+  %t756 = sext i32 44 to i64
+  store i64 %t756, ptr %t755
+  %t757 = getelementptr [3 x i8], ptr @.str56, i64 0, i64 0
+  %t758 = call ptr @strdup(ptr %t757)
+  %t759 = getelementptr i8, ptr %t2, i64 0
+  store ptr %t758, ptr %t759
+  %t760 = load i64, ptr %t2
+  %t761 = sext i32 %t760 to i64
+  ret i64 %t761
 L321:
   br label %L319
 L319:
-  %t699 = sext i32 0 to i64
-  %t698 = icmp ne i64 %t699, 0
-  br i1 %t698, label %L318, label %L320
+  %t763 = sext i32 0 to i64
+  %t762 = icmp ne i64 %t763, 0
+  br i1 %t762, label %L318, label %L320
 L320:
   br label %L307
 L307:
-  %t700 = load i64, ptr %t378
-  %t702 = sext i32 %t700 to i64
-  %t703 = sext i32 61 to i64
-  %t701 = icmp eq i64 %t702, %t703
-  %t704 = zext i1 %t701 to i64
-  %t705 = icmp ne i64 %t704, 0
-  br i1 %t705, label %L322, label %L324
+  %t764 = load i64, ptr %t394
+  %t766 = sext i32 %t764 to i64
+  %t767 = sext i32 61 to i64
+  %t765 = icmp eq i64 %t766, %t767
+  %t768 = zext i1 %t765 to i64
+  %t769 = icmp ne i64 %t768, 0
+  br i1 %t769, label %L322, label %L324
 L322:
   br label %L325
 L325:
-  %t706 = call i8 @advance(ptr %t0)
-  %t707 = sext i8 %t706 to i64
+  %t770 = call i8 @advance(ptr %t0)
+  %t771 = sext i8 %t770 to i64
   br label %L328
 L328:
-  %t708 = sext i32 50 to i64
-  store i64 %t708, ptr %t2
-  %t709 = getelementptr [3 x i8], ptr @.str57, i64 0, i64 0
-  %t710 = call ptr @strdup(ptr %t709)
-  store ptr %t710, ptr %t2
-  %t711 = load i64, ptr %t2
-  %t712 = sext i32 %t711 to i64
-  ret i64 %t712
+  %t772 = getelementptr i8, ptr %t2, i64 0
+  %t773 = sext i32 50 to i64
+  store i64 %t773, ptr %t772
+  %t774 = getelementptr [3 x i8], ptr @.str57, i64 0, i64 0
+  %t775 = call ptr @strdup(ptr %t774)
+  %t776 = getelementptr i8, ptr %t2, i64 0
+  store ptr %t775, ptr %t776
+  %t777 = load i64, ptr %t2
+  %t778 = sext i32 %t777 to i64
+  ret i64 %t778
 L331:
   br label %L329
 L329:
-  %t714 = sext i32 0 to i64
-  %t713 = icmp ne i64 %t714, 0
-  br i1 %t713, label %L328, label %L330
+  %t780 = sext i32 0 to i64
+  %t779 = icmp ne i64 %t780, 0
+  br i1 %t779, label %L328, label %L330
 L330:
   br label %L326
 L326:
-  %t716 = sext i32 0 to i64
-  %t715 = icmp ne i64 %t716, 0
-  br i1 %t715, label %L325, label %L327
+  %t782 = sext i32 0 to i64
+  %t781 = icmp ne i64 %t782, 0
+  br i1 %t781, label %L325, label %L327
 L327:
   br label %L324
 L324:
   br label %L332
 L332:
-  %t717 = sext i32 48 to i64
-  store i64 %t717, ptr %t2
-  %t718 = getelementptr [2 x i8], ptr @.str58, i64 0, i64 0
-  %t719 = call ptr @strdup(ptr %t718)
-  store ptr %t719, ptr %t2
-  %t720 = load i64, ptr %t2
-  %t721 = sext i32 %t720 to i64
-  ret i64 %t721
+  %t783 = getelementptr i8, ptr %t2, i64 0
+  %t784 = sext i32 48 to i64
+  store i64 %t784, ptr %t783
+  %t785 = getelementptr [2 x i8], ptr @.str58, i64 0, i64 0
+  %t786 = call ptr @strdup(ptr %t785)
+  %t787 = getelementptr i8, ptr %t2, i64 0
+  store ptr %t786, ptr %t787
+  %t788 = load i64, ptr %t2
+  %t789 = sext i32 %t788 to i64
+  ret i64 %t789
 L335:
   br label %L333
 L333:
-  %t723 = sext i32 0 to i64
-  %t722 = icmp ne i64 %t723, 0
-  br i1 %t722, label %L332, label %L334
+  %t791 = sext i32 0 to i64
+  %t790 = icmp ne i64 %t791, 0
+  br i1 %t790, label %L332, label %L334
 L334:
   br label %L124
 L124:
-  %t724 = load i64, ptr %t378
-  %t726 = sext i32 %t724 to i64
-  %t727 = sext i32 62 to i64
-  %t725 = icmp eq i64 %t726, %t727
-  %t728 = zext i1 %t725 to i64
-  %t729 = icmp ne i64 %t728, 0
-  br i1 %t729, label %L336, label %L338
+  %t792 = load i64, ptr %t394
+  %t794 = sext i32 %t792 to i64
+  %t795 = sext i32 62 to i64
+  %t793 = icmp eq i64 %t794, %t795
+  %t796 = zext i1 %t793 to i64
+  %t797 = icmp ne i64 %t796, 0
+  br i1 %t797, label %L336, label %L338
 L336:
-  %t730 = call i8 @advance(ptr %t0)
-  %t731 = sext i8 %t730 to i64
-  %t732 = call i8 @cur(ptr %t0)
-  %t733 = sext i8 %t732 to i64
-  %t735 = sext i32 61 to i64
-  %t734 = icmp eq i64 %t733, %t735
-  %t736 = zext i1 %t734 to i64
-  %t737 = icmp ne i64 %t736, 0
-  br i1 %t737, label %L339, label %L341
+  %t798 = call i8 @advance(ptr %t0)
+  %t799 = sext i8 %t798 to i64
+  %t800 = call i8 @cur(ptr %t0)
+  %t801 = sext i8 %t800 to i64
+  %t803 = sext i32 61 to i64
+  %t802 = icmp eq i64 %t801, %t803
+  %t804 = zext i1 %t802 to i64
+  %t805 = icmp ne i64 %t804, 0
+  br i1 %t805, label %L339, label %L341
 L339:
   br label %L342
 L342:
-  %t738 = call i8 @advance(ptr %t0)
-  %t739 = sext i8 %t738 to i64
+  %t806 = call i8 @advance(ptr %t0)
+  %t807 = sext i8 %t806 to i64
   br label %L345
 L345:
-  %t740 = sext i32 64 to i64
-  store i64 %t740, ptr %t2
-  %t741 = getelementptr [4 x i8], ptr @.str59, i64 0, i64 0
-  %t742 = call ptr @strdup(ptr %t741)
-  store ptr %t742, ptr %t2
-  %t743 = load i64, ptr %t2
-  %t744 = sext i32 %t743 to i64
-  ret i64 %t744
+  %t808 = getelementptr i8, ptr %t2, i64 0
+  %t809 = sext i32 64 to i64
+  store i64 %t809, ptr %t808
+  %t810 = getelementptr [4 x i8], ptr @.str59, i64 0, i64 0
+  %t811 = call ptr @strdup(ptr %t810)
+  %t812 = getelementptr i8, ptr %t2, i64 0
+  store ptr %t811, ptr %t812
+  %t813 = load i64, ptr %t2
+  %t814 = sext i32 %t813 to i64
+  ret i64 %t814
 L348:
   br label %L346
 L346:
-  %t746 = sext i32 0 to i64
-  %t745 = icmp ne i64 %t746, 0
-  br i1 %t745, label %L345, label %L347
+  %t816 = sext i32 0 to i64
+  %t815 = icmp ne i64 %t816, 0
+  br i1 %t815, label %L345, label %L347
 L347:
   br label %L343
 L343:
-  %t748 = sext i32 0 to i64
-  %t747 = icmp ne i64 %t748, 0
-  br i1 %t747, label %L342, label %L344
+  %t818 = sext i32 0 to i64
+  %t817 = icmp ne i64 %t818, 0
+  br i1 %t817, label %L342, label %L344
 L344:
   br label %L341
 L341:
   br label %L349
 L349:
-  %t749 = sext i32 45 to i64
-  store i64 %t749, ptr %t2
-  %t750 = getelementptr [3 x i8], ptr @.str60, i64 0, i64 0
-  %t751 = call ptr @strdup(ptr %t750)
-  store ptr %t751, ptr %t2
-  %t752 = load i64, ptr %t2
-  %t753 = sext i32 %t752 to i64
-  ret i64 %t753
+  %t819 = getelementptr i8, ptr %t2, i64 0
+  %t820 = sext i32 45 to i64
+  store i64 %t820, ptr %t819
+  %t821 = getelementptr [3 x i8], ptr @.str60, i64 0, i64 0
+  %t822 = call ptr @strdup(ptr %t821)
+  %t823 = getelementptr i8, ptr %t2, i64 0
+  store ptr %t822, ptr %t823
+  %t824 = load i64, ptr %t2
+  %t825 = sext i32 %t824 to i64
+  ret i64 %t825
 L352:
   br label %L350
 L350:
-  %t755 = sext i32 0 to i64
-  %t754 = icmp ne i64 %t755, 0
-  br i1 %t754, label %L349, label %L351
+  %t827 = sext i32 0 to i64
+  %t826 = icmp ne i64 %t827, 0
+  br i1 %t826, label %L349, label %L351
 L351:
   br label %L338
 L338:
-  %t756 = load i64, ptr %t378
-  %t758 = sext i32 %t756 to i64
-  %t759 = sext i32 61 to i64
-  %t757 = icmp eq i64 %t758, %t759
-  %t760 = zext i1 %t757 to i64
-  %t761 = icmp ne i64 %t760, 0
-  br i1 %t761, label %L353, label %L355
+  %t828 = load i64, ptr %t394
+  %t830 = sext i32 %t828 to i64
+  %t831 = sext i32 61 to i64
+  %t829 = icmp eq i64 %t830, %t831
+  %t832 = zext i1 %t829 to i64
+  %t833 = icmp ne i64 %t832, 0
+  br i1 %t833, label %L353, label %L355
 L353:
   br label %L356
 L356:
-  %t762 = call i8 @advance(ptr %t0)
-  %t763 = sext i8 %t762 to i64
+  %t834 = call i8 @advance(ptr %t0)
+  %t835 = sext i8 %t834 to i64
   br label %L359
 L359:
-  %t764 = sext i32 51 to i64
-  store i64 %t764, ptr %t2
-  %t765 = getelementptr [3 x i8], ptr @.str61, i64 0, i64 0
-  %t766 = call ptr @strdup(ptr %t765)
-  store ptr %t766, ptr %t2
-  %t767 = load i64, ptr %t2
-  %t768 = sext i32 %t767 to i64
-  ret i64 %t768
+  %t836 = getelementptr i8, ptr %t2, i64 0
+  %t837 = sext i32 51 to i64
+  store i64 %t837, ptr %t836
+  %t838 = getelementptr [3 x i8], ptr @.str61, i64 0, i64 0
+  %t839 = call ptr @strdup(ptr %t838)
+  %t840 = getelementptr i8, ptr %t2, i64 0
+  store ptr %t839, ptr %t840
+  %t841 = load i64, ptr %t2
+  %t842 = sext i32 %t841 to i64
+  ret i64 %t842
 L362:
   br label %L360
 L360:
-  %t770 = sext i32 0 to i64
-  %t769 = icmp ne i64 %t770, 0
-  br i1 %t769, label %L359, label %L361
+  %t844 = sext i32 0 to i64
+  %t843 = icmp ne i64 %t844, 0
+  br i1 %t843, label %L359, label %L361
 L361:
   br label %L357
 L357:
-  %t772 = sext i32 0 to i64
-  %t771 = icmp ne i64 %t772, 0
-  br i1 %t771, label %L356, label %L358
+  %t846 = sext i32 0 to i64
+  %t845 = icmp ne i64 %t846, 0
+  br i1 %t845, label %L356, label %L358
 L358:
   br label %L355
 L355:
   br label %L363
 L363:
-  %t773 = sext i32 49 to i64
-  store i64 %t773, ptr %t2
-  %t774 = getelementptr [2 x i8], ptr @.str62, i64 0, i64 0
-  %t775 = call ptr @strdup(ptr %t774)
-  store ptr %t775, ptr %t2
-  %t776 = load i64, ptr %t2
-  %t777 = sext i32 %t776 to i64
-  ret i64 %t777
+  %t847 = getelementptr i8, ptr %t2, i64 0
+  %t848 = sext i32 49 to i64
+  store i64 %t848, ptr %t847
+  %t849 = getelementptr [2 x i8], ptr @.str62, i64 0, i64 0
+  %t850 = call ptr @strdup(ptr %t849)
+  %t851 = getelementptr i8, ptr %t2, i64 0
+  store ptr %t850, ptr %t851
+  %t852 = load i64, ptr %t2
+  %t853 = sext i32 %t852 to i64
+  ret i64 %t853
 L366:
   br label %L364
 L364:
-  %t779 = sext i32 0 to i64
-  %t778 = icmp ne i64 %t779, 0
-  br i1 %t778, label %L363, label %L365
+  %t855 = sext i32 0 to i64
+  %t854 = icmp ne i64 %t855, 0
+  br i1 %t854, label %L363, label %L365
 L365:
   br label %L125
 L125:
-  %t780 = load i64, ptr %t378
-  %t782 = sext i32 %t780 to i64
-  %t783 = sext i32 61 to i64
-  %t781 = icmp eq i64 %t782, %t783
-  %t784 = zext i1 %t781 to i64
-  %t785 = icmp ne i64 %t784, 0
-  br i1 %t785, label %L367, label %L369
+  %t856 = load i64, ptr %t394
+  %t858 = sext i32 %t856 to i64
+  %t859 = sext i32 61 to i64
+  %t857 = icmp eq i64 %t858, %t859
+  %t860 = zext i1 %t857 to i64
+  %t861 = icmp ne i64 %t860, 0
+  br i1 %t861, label %L367, label %L369
 L367:
   br label %L370
 L370:
-  %t786 = call i8 @advance(ptr %t0)
-  %t787 = sext i8 %t786 to i64
+  %t862 = call i8 @advance(ptr %t0)
+  %t863 = sext i8 %t862 to i64
   br label %L373
 L373:
-  %t788 = sext i32 46 to i64
-  store i64 %t788, ptr %t2
-  %t789 = getelementptr [3 x i8], ptr @.str63, i64 0, i64 0
-  %t790 = call ptr @strdup(ptr %t789)
-  store ptr %t790, ptr %t2
-  %t791 = load i64, ptr %t2
-  %t792 = sext i32 %t791 to i64
-  ret i64 %t792
+  %t864 = getelementptr i8, ptr %t2, i64 0
+  %t865 = sext i32 46 to i64
+  store i64 %t865, ptr %t864
+  %t866 = getelementptr [3 x i8], ptr @.str63, i64 0, i64 0
+  %t867 = call ptr @strdup(ptr %t866)
+  %t868 = getelementptr i8, ptr %t2, i64 0
+  store ptr %t867, ptr %t868
+  %t869 = load i64, ptr %t2
+  %t870 = sext i32 %t869 to i64
+  ret i64 %t870
 L376:
   br label %L374
 L374:
-  %t794 = sext i32 0 to i64
-  %t793 = icmp ne i64 %t794, 0
-  br i1 %t793, label %L373, label %L375
+  %t872 = sext i32 0 to i64
+  %t871 = icmp ne i64 %t872, 0
+  br i1 %t871, label %L373, label %L375
 L375:
   br label %L371
 L371:
-  %t796 = sext i32 0 to i64
-  %t795 = icmp ne i64 %t796, 0
-  br i1 %t795, label %L370, label %L372
+  %t874 = sext i32 0 to i64
+  %t873 = icmp ne i64 %t874, 0
+  br i1 %t873, label %L370, label %L372
 L372:
   br label %L369
 L369:
   br label %L377
 L377:
-  %t797 = sext i32 55 to i64
-  store i64 %t797, ptr %t2
-  %t798 = getelementptr [2 x i8], ptr @.str64, i64 0, i64 0
-  %t799 = call ptr @strdup(ptr %t798)
-  store ptr %t799, ptr %t2
-  %t800 = load i64, ptr %t2
-  %t801 = sext i32 %t800 to i64
-  ret i64 %t801
+  %t875 = getelementptr i8, ptr %t2, i64 0
+  %t876 = sext i32 55 to i64
+  store i64 %t876, ptr %t875
+  %t877 = getelementptr [2 x i8], ptr @.str64, i64 0, i64 0
+  %t878 = call ptr @strdup(ptr %t877)
+  %t879 = getelementptr i8, ptr %t2, i64 0
+  store ptr %t878, ptr %t879
+  %t880 = load i64, ptr %t2
+  %t881 = sext i32 %t880 to i64
+  ret i64 %t881
 L380:
   br label %L378
 L378:
-  %t803 = sext i32 0 to i64
-  %t802 = icmp ne i64 %t803, 0
-  br i1 %t802, label %L377, label %L379
+  %t883 = sext i32 0 to i64
+  %t882 = icmp ne i64 %t883, 0
+  br i1 %t882, label %L377, label %L379
 L379:
   br label %L126
 L126:
-  %t804 = load i64, ptr %t378
-  %t806 = sext i32 %t804 to i64
-  %t807 = sext i32 61 to i64
-  %t805 = icmp eq i64 %t806, %t807
-  %t808 = zext i1 %t805 to i64
-  %t809 = icmp ne i64 %t808, 0
-  br i1 %t809, label %L381, label %L383
+  %t884 = load i64, ptr %t394
+  %t886 = sext i32 %t884 to i64
+  %t887 = sext i32 61 to i64
+  %t885 = icmp eq i64 %t886, %t887
+  %t888 = zext i1 %t885 to i64
+  %t889 = icmp ne i64 %t888, 0
+  br i1 %t889, label %L381, label %L383
 L381:
   br label %L384
 L384:
-  %t810 = call i8 @advance(ptr %t0)
-  %t811 = sext i8 %t810 to i64
+  %t890 = call i8 @advance(ptr %t0)
+  %t891 = sext i8 %t890 to i64
   br label %L387
 L387:
-  %t812 = sext i32 47 to i64
-  store i64 %t812, ptr %t2
-  %t813 = getelementptr [3 x i8], ptr @.str65, i64 0, i64 0
-  %t814 = call ptr @strdup(ptr %t813)
-  store ptr %t814, ptr %t2
-  %t815 = load i64, ptr %t2
-  %t816 = sext i32 %t815 to i64
-  ret i64 %t816
+  %t892 = getelementptr i8, ptr %t2, i64 0
+  %t893 = sext i32 47 to i64
+  store i64 %t893, ptr %t892
+  %t894 = getelementptr [3 x i8], ptr @.str65, i64 0, i64 0
+  %t895 = call ptr @strdup(ptr %t894)
+  %t896 = getelementptr i8, ptr %t2, i64 0
+  store ptr %t895, ptr %t896
+  %t897 = load i64, ptr %t2
+  %t898 = sext i32 %t897 to i64
+  ret i64 %t898
 L390:
   br label %L388
 L388:
-  %t818 = sext i32 0 to i64
-  %t817 = icmp ne i64 %t818, 0
-  br i1 %t817, label %L387, label %L389
+  %t900 = sext i32 0 to i64
+  %t899 = icmp ne i64 %t900, 0
+  br i1 %t899, label %L387, label %L389
 L389:
   br label %L385
 L385:
-  %t820 = sext i32 0 to i64
-  %t819 = icmp ne i64 %t820, 0
-  br i1 %t819, label %L384, label %L386
+  %t902 = sext i32 0 to i64
+  %t901 = icmp ne i64 %t902, 0
+  br i1 %t901, label %L384, label %L386
 L386:
   br label %L383
 L383:
   br label %L391
 L391:
-  %t821 = sext i32 54 to i64
-  store i64 %t821, ptr %t2
-  %t822 = getelementptr [2 x i8], ptr @.str66, i64 0, i64 0
-  %t823 = call ptr @strdup(ptr %t822)
-  store ptr %t823, ptr %t2
-  %t824 = load i64, ptr %t2
-  %t825 = sext i32 %t824 to i64
-  ret i64 %t825
+  %t903 = getelementptr i8, ptr %t2, i64 0
+  %t904 = sext i32 54 to i64
+  store i64 %t904, ptr %t903
+  %t905 = getelementptr [2 x i8], ptr @.str66, i64 0, i64 0
+  %t906 = call ptr @strdup(ptr %t905)
+  %t907 = getelementptr i8, ptr %t2, i64 0
+  store ptr %t906, ptr %t907
+  %t908 = load i64, ptr %t2
+  %t909 = sext i32 %t908 to i64
+  ret i64 %t909
 L394:
   br label %L392
 L392:
-  %t827 = sext i32 0 to i64
-  %t826 = icmp ne i64 %t827, 0
-  br i1 %t826, label %L391, label %L393
+  %t911 = sext i32 0 to i64
+  %t910 = icmp ne i64 %t911, 0
+  br i1 %t910, label %L391, label %L393
 L393:
   br label %L127
 L127:
-  %t828 = load i64, ptr %t378
-  %t830 = sext i32 %t828 to i64
-  %t831 = sext i32 46 to i64
-  %t829 = icmp eq i64 %t830, %t831
-  %t832 = zext i1 %t829 to i64
-  %t833 = icmp ne i64 %t832, 0
-  br i1 %t833, label %L395, label %L396
+  %t912 = load i64, ptr %t394
+  %t914 = sext i32 %t912 to i64
+  %t915 = sext i32 46 to i64
+  %t913 = icmp eq i64 %t914, %t915
+  %t916 = zext i1 %t913 to i64
+  %t917 = icmp ne i64 %t916, 0
+  br i1 %t917, label %L395, label %L396
 L395:
-  %t834 = load ptr, ptr %t0
-  %t835 = load ptr, ptr %t0
-  %t837 = ptrtoint ptr %t835 to i64
-  %t838 = sext i32 1 to i64
-  %t839 = inttoptr i64 %t837 to ptr
-  %t836 = getelementptr i8, ptr %t839, i64 %t838
-  %t840 = ptrtoint ptr %t836 to i64
-  %t841 = getelementptr ptr, ptr %t834, i64 %t840
-  %t842 = load ptr, ptr %t841
-  %t844 = ptrtoint ptr %t842 to i64
-  %t845 = sext i32 46 to i64
-  %t843 = icmp eq i64 %t844, %t845
-  %t846 = zext i1 %t843 to i64
-  %t847 = icmp ne i64 %t846, 0
-  %t848 = zext i1 %t847 to i64
+  %t918 = getelementptr i8, ptr %t0, i64 0
+  %t919 = load i64, ptr %t918
+  %t920 = getelementptr i8, ptr %t0, i64 0
+  %t921 = load i64, ptr %t920
+  %t923 = sext i32 1 to i64
+  %t922 = add i64 %t921, %t923
+  %t924 = inttoptr i64 %t919 to ptr
+  %t925 = getelementptr ptr, ptr %t924, i64 %t922
+  %t926 = load ptr, ptr %t925
+  %t928 = ptrtoint ptr %t926 to i64
+  %t929 = sext i32 46 to i64
+  %t927 = icmp eq i64 %t928, %t929
+  %t930 = zext i1 %t927 to i64
+  %t931 = icmp ne i64 %t930, 0
+  %t932 = zext i1 %t931 to i64
   br label %L397
 L396:
   br label %L397
 L397:
-  %t849 = phi i64 [ %t848, %L395 ], [ 0, %L396 ]
-  %t850 = icmp ne i64 %t849, 0
-  br i1 %t850, label %L398, label %L400
+  %t933 = phi i64 [ %t932, %L395 ], [ 0, %L396 ]
+  %t934 = icmp ne i64 %t933, 0
+  br i1 %t934, label %L398, label %L400
 L398:
-  %t851 = call i8 @advance(ptr %t0)
-  %t852 = sext i8 %t851 to i64
-  %t853 = call i8 @advance(ptr %t0)
-  %t854 = sext i8 %t853 to i64
+  %t935 = call i8 @advance(ptr %t0)
+  %t936 = sext i8 %t935 to i64
+  %t937 = call i8 @advance(ptr %t0)
+  %t938 = sext i8 %t937 to i64
   br label %L401
 L401:
-  %t855 = sext i32 80 to i64
-  store i64 %t855, ptr %t2
-  %t856 = getelementptr [4 x i8], ptr @.str67, i64 0, i64 0
-  %t857 = call ptr @strdup(ptr %t856)
-  store ptr %t857, ptr %t2
-  %t858 = load i64, ptr %t2
-  %t859 = sext i32 %t858 to i64
-  ret i64 %t859
+  %t939 = getelementptr i8, ptr %t2, i64 0
+  %t940 = sext i32 80 to i64
+  store i64 %t940, ptr %t939
+  %t941 = getelementptr [4 x i8], ptr @.str67, i64 0, i64 0
+  %t942 = call ptr @strdup(ptr %t941)
+  %t943 = getelementptr i8, ptr %t2, i64 0
+  store ptr %t942, ptr %t943
+  %t944 = load i64, ptr %t2
+  %t945 = sext i32 %t944 to i64
+  ret i64 %t945
 L404:
   br label %L402
 L402:
-  %t861 = sext i32 0 to i64
-  %t860 = icmp ne i64 %t861, 0
-  br i1 %t860, label %L401, label %L403
+  %t947 = sext i32 0 to i64
+  %t946 = icmp ne i64 %t947, 0
+  br i1 %t946, label %L401, label %L403
 L403:
   br label %L400
 L400:
   br label %L405
 L405:
-  %t862 = sext i32 69 to i64
-  store i64 %t862, ptr %t2
-  %t863 = getelementptr [2 x i8], ptr @.str68, i64 0, i64 0
-  %t864 = call ptr @strdup(ptr %t863)
-  store ptr %t864, ptr %t2
-  %t865 = load i64, ptr %t2
-  %t866 = sext i32 %t865 to i64
-  ret i64 %t866
+  %t948 = getelementptr i8, ptr %t2, i64 0
+  %t949 = sext i32 69 to i64
+  store i64 %t949, ptr %t948
+  %t950 = getelementptr [2 x i8], ptr @.str68, i64 0, i64 0
+  %t951 = call ptr @strdup(ptr %t950)
+  %t952 = getelementptr i8, ptr %t2, i64 0
+  store ptr %t951, ptr %t952
+  %t953 = load i64, ptr %t2
+  %t954 = sext i32 %t953 to i64
+  ret i64 %t954
 L408:
   br label %L406
 L406:
-  %t868 = sext i32 0 to i64
-  %t867 = icmp ne i64 %t868, 0
-  br i1 %t867, label %L405, label %L407
+  %t956 = sext i32 0 to i64
+  %t955 = icmp ne i64 %t956, 0
+  br i1 %t955, label %L405, label %L407
 L407:
   br label %L128
 L128:
   br label %L409
 L409:
-  %t869 = sext i32 72 to i64
-  store i64 %t869, ptr %t2
-  %t870 = getelementptr [2 x i8], ptr @.str69, i64 0, i64 0
-  %t871 = call ptr @strdup(ptr %t870)
-  store ptr %t871, ptr %t2
-  %t872 = load i64, ptr %t2
-  %t873 = sext i32 %t872 to i64
-  ret i64 %t873
+  %t957 = getelementptr i8, ptr %t2, i64 0
+  %t958 = sext i32 72 to i64
+  store i64 %t958, ptr %t957
+  %t959 = getelementptr [2 x i8], ptr @.str69, i64 0, i64 0
+  %t960 = call ptr @strdup(ptr %t959)
+  %t961 = getelementptr i8, ptr %t2, i64 0
+  store ptr %t960, ptr %t961
+  %t962 = load i64, ptr %t2
+  %t963 = sext i32 %t962 to i64
+  ret i64 %t963
 L412:
   br label %L410
 L410:
-  %t875 = sext i32 0 to i64
-  %t874 = icmp ne i64 %t875, 0
-  br i1 %t874, label %L409, label %L411
+  %t965 = sext i32 0 to i64
+  %t964 = icmp ne i64 %t965, 0
+  br i1 %t964, label %L409, label %L411
 L411:
   br label %L129
 L129:
   br label %L413
 L413:
-  %t876 = sext i32 73 to i64
-  store i64 %t876, ptr %t2
-  %t877 = getelementptr [2 x i8], ptr @.str70, i64 0, i64 0
-  %t878 = call ptr @strdup(ptr %t877)
-  store ptr %t878, ptr %t2
-  %t879 = load i64, ptr %t2
-  %t880 = sext i32 %t879 to i64
-  ret i64 %t880
+  %t966 = getelementptr i8, ptr %t2, i64 0
+  %t967 = sext i32 73 to i64
+  store i64 %t967, ptr %t966
+  %t968 = getelementptr [2 x i8], ptr @.str70, i64 0, i64 0
+  %t969 = call ptr @strdup(ptr %t968)
+  %t970 = getelementptr i8, ptr %t2, i64 0
+  store ptr %t969, ptr %t970
+  %t971 = load i64, ptr %t2
+  %t972 = sext i32 %t971 to i64
+  ret i64 %t972
 L416:
   br label %L414
 L414:
-  %t882 = sext i32 0 to i64
-  %t881 = icmp ne i64 %t882, 0
-  br i1 %t881, label %L413, label %L415
+  %t974 = sext i32 0 to i64
+  %t973 = icmp ne i64 %t974, 0
+  br i1 %t973, label %L413, label %L415
 L415:
   br label %L130
 L130:
   br label %L417
 L417:
-  %t883 = sext i32 74 to i64
-  store i64 %t883, ptr %t2
-  %t884 = getelementptr [2 x i8], ptr @.str71, i64 0, i64 0
-  %t885 = call ptr @strdup(ptr %t884)
-  store ptr %t885, ptr %t2
-  %t886 = load i64, ptr %t2
-  %t887 = sext i32 %t886 to i64
-  ret i64 %t887
+  %t975 = getelementptr i8, ptr %t2, i64 0
+  %t976 = sext i32 74 to i64
+  store i64 %t976, ptr %t975
+  %t977 = getelementptr [2 x i8], ptr @.str71, i64 0, i64 0
+  %t978 = call ptr @strdup(ptr %t977)
+  %t979 = getelementptr i8, ptr %t2, i64 0
+  store ptr %t978, ptr %t979
+  %t980 = load i64, ptr %t2
+  %t981 = sext i32 %t980 to i64
+  ret i64 %t981
 L420:
   br label %L418
 L418:
-  %t889 = sext i32 0 to i64
-  %t888 = icmp ne i64 %t889, 0
-  br i1 %t888, label %L417, label %L419
+  %t983 = sext i32 0 to i64
+  %t982 = icmp ne i64 %t983, 0
+  br i1 %t982, label %L417, label %L419
 L419:
   br label %L131
 L131:
   br label %L421
 L421:
-  %t890 = sext i32 75 to i64
-  store i64 %t890, ptr %t2
-  %t891 = getelementptr [2 x i8], ptr @.str72, i64 0, i64 0
-  %t892 = call ptr @strdup(ptr %t891)
-  store ptr %t892, ptr %t2
-  %t893 = load i64, ptr %t2
-  %t894 = sext i32 %t893 to i64
-  ret i64 %t894
+  %t984 = getelementptr i8, ptr %t2, i64 0
+  %t985 = sext i32 75 to i64
+  store i64 %t985, ptr %t984
+  %t986 = getelementptr [2 x i8], ptr @.str72, i64 0, i64 0
+  %t987 = call ptr @strdup(ptr %t986)
+  %t988 = getelementptr i8, ptr %t2, i64 0
+  store ptr %t987, ptr %t988
+  %t989 = load i64, ptr %t2
+  %t990 = sext i32 %t989 to i64
+  ret i64 %t990
 L424:
   br label %L422
 L422:
-  %t896 = sext i32 0 to i64
-  %t895 = icmp ne i64 %t896, 0
-  br i1 %t895, label %L421, label %L423
+  %t992 = sext i32 0 to i64
+  %t991 = icmp ne i64 %t992, 0
+  br i1 %t991, label %L421, label %L423
 L423:
   br label %L132
 L132:
   br label %L425
 L425:
-  %t897 = sext i32 76 to i64
-  store i64 %t897, ptr %t2
-  %t898 = getelementptr [2 x i8], ptr @.str73, i64 0, i64 0
-  %t899 = call ptr @strdup(ptr %t898)
-  store ptr %t899, ptr %t2
-  %t900 = load i64, ptr %t2
-  %t901 = sext i32 %t900 to i64
-  ret i64 %t901
+  %t993 = getelementptr i8, ptr %t2, i64 0
+  %t994 = sext i32 76 to i64
+  store i64 %t994, ptr %t993
+  %t995 = getelementptr [2 x i8], ptr @.str73, i64 0, i64 0
+  %t996 = call ptr @strdup(ptr %t995)
+  %t997 = getelementptr i8, ptr %t2, i64 0
+  store ptr %t996, ptr %t997
+  %t998 = load i64, ptr %t2
+  %t999 = sext i32 %t998 to i64
+  ret i64 %t999
 L428:
   br label %L426
 L426:
-  %t903 = sext i32 0 to i64
-  %t902 = icmp ne i64 %t903, 0
-  br i1 %t902, label %L425, label %L427
+  %t1001 = sext i32 0 to i64
+  %t1000 = icmp ne i64 %t1001, 0
+  br i1 %t1000, label %L425, label %L427
 L427:
   br label %L133
 L133:
   br label %L429
 L429:
-  %t904 = sext i32 77 to i64
-  store i64 %t904, ptr %t2
-  %t905 = getelementptr [2 x i8], ptr @.str74, i64 0, i64 0
-  %t906 = call ptr @strdup(ptr %t905)
-  store ptr %t906, ptr %t2
-  %t907 = load i64, ptr %t2
-  %t908 = sext i32 %t907 to i64
-  ret i64 %t908
+  %t1002 = getelementptr i8, ptr %t2, i64 0
+  %t1003 = sext i32 77 to i64
+  store i64 %t1003, ptr %t1002
+  %t1004 = getelementptr [2 x i8], ptr @.str74, i64 0, i64 0
+  %t1005 = call ptr @strdup(ptr %t1004)
+  %t1006 = getelementptr i8, ptr %t2, i64 0
+  store ptr %t1005, ptr %t1006
+  %t1007 = load i64, ptr %t2
+  %t1008 = sext i32 %t1007 to i64
+  ret i64 %t1008
 L432:
   br label %L430
 L430:
-  %t910 = sext i32 0 to i64
-  %t909 = icmp ne i64 %t910, 0
-  br i1 %t909, label %L429, label %L431
+  %t1010 = sext i32 0 to i64
+  %t1009 = icmp ne i64 %t1010, 0
+  br i1 %t1009, label %L429, label %L431
 L431:
   br label %L134
 L134:
   br label %L433
 L433:
-  %t911 = sext i32 78 to i64
-  store i64 %t911, ptr %t2
-  %t912 = getelementptr [2 x i8], ptr @.str75, i64 0, i64 0
-  %t913 = call ptr @strdup(ptr %t912)
-  store ptr %t913, ptr %t2
-  %t914 = load i64, ptr %t2
-  %t915 = sext i32 %t914 to i64
-  ret i64 %t915
+  %t1011 = getelementptr i8, ptr %t2, i64 0
+  %t1012 = sext i32 78 to i64
+  store i64 %t1012, ptr %t1011
+  %t1013 = getelementptr [2 x i8], ptr @.str75, i64 0, i64 0
+  %t1014 = call ptr @strdup(ptr %t1013)
+  %t1015 = getelementptr i8, ptr %t2, i64 0
+  store ptr %t1014, ptr %t1015
+  %t1016 = load i64, ptr %t2
+  %t1017 = sext i32 %t1016 to i64
+  ret i64 %t1017
 L436:
   br label %L434
 L434:
-  %t917 = sext i32 0 to i64
-  %t916 = icmp ne i64 %t917, 0
-  br i1 %t916, label %L433, label %L435
+  %t1019 = sext i32 0 to i64
+  %t1018 = icmp ne i64 %t1019, 0
+  br i1 %t1018, label %L433, label %L435
 L435:
   br label %L135
 L135:
   br label %L437
 L437:
-  %t918 = sext i32 79 to i64
-  store i64 %t918, ptr %t2
-  %t919 = getelementptr [2 x i8], ptr @.str76, i64 0, i64 0
-  %t920 = call ptr @strdup(ptr %t919)
-  store ptr %t920, ptr %t2
-  %t921 = load i64, ptr %t2
-  %t922 = sext i32 %t921 to i64
-  ret i64 %t922
+  %t1020 = getelementptr i8, ptr %t2, i64 0
+  %t1021 = sext i32 79 to i64
+  store i64 %t1021, ptr %t1020
+  %t1022 = getelementptr [2 x i8], ptr @.str76, i64 0, i64 0
+  %t1023 = call ptr @strdup(ptr %t1022)
+  %t1024 = getelementptr i8, ptr %t2, i64 0
+  store ptr %t1023, ptr %t1024
+  %t1025 = load i64, ptr %t2
+  %t1026 = sext i32 %t1025 to i64
+  ret i64 %t1026
 L440:
   br label %L438
 L438:
-  %t924 = sext i32 0 to i64
-  %t923 = icmp ne i64 %t924, 0
-  br i1 %t923, label %L437, label %L439
+  %t1028 = sext i32 0 to i64
+  %t1027 = icmp ne i64 %t1028, 0
+  br i1 %t1027, label %L437, label %L439
 L439:
   br label %L136
 L136:
   br label %L441
 L441:
-  %t925 = sext i32 70 to i64
-  store i64 %t925, ptr %t2
-  %t926 = getelementptr [2 x i8], ptr @.str77, i64 0, i64 0
-  %t927 = call ptr @strdup(ptr %t926)
-  store ptr %t927, ptr %t2
-  %t928 = load i64, ptr %t2
-  %t929 = sext i32 %t928 to i64
-  ret i64 %t929
+  %t1029 = getelementptr i8, ptr %t2, i64 0
+  %t1030 = sext i32 70 to i64
+  store i64 %t1030, ptr %t1029
+  %t1031 = getelementptr [2 x i8], ptr @.str77, i64 0, i64 0
+  %t1032 = call ptr @strdup(ptr %t1031)
+  %t1033 = getelementptr i8, ptr %t2, i64 0
+  store ptr %t1032, ptr %t1033
+  %t1034 = load i64, ptr %t2
+  %t1035 = sext i32 %t1034 to i64
+  ret i64 %t1035
 L444:
   br label %L442
 L442:
-  %t931 = sext i32 0 to i64
-  %t930 = icmp ne i64 %t931, 0
-  br i1 %t930, label %L441, label %L443
+  %t1037 = sext i32 0 to i64
+  %t1036 = icmp ne i64 %t1037, 0
+  br i1 %t1036, label %L441, label %L443
 L443:
   br label %L137
 L137:
   br label %L445
 L445:
-  %t932 = sext i32 71 to i64
-  store i64 %t932, ptr %t2
-  %t933 = getelementptr [2 x i8], ptr @.str78, i64 0, i64 0
-  %t934 = call ptr @strdup(ptr %t933)
-  store ptr %t934, ptr %t2
-  %t935 = load i64, ptr %t2
-  %t936 = sext i32 %t935 to i64
-  ret i64 %t936
+  %t1038 = getelementptr i8, ptr %t2, i64 0
+  %t1039 = sext i32 71 to i64
+  store i64 %t1039, ptr %t1038
+  %t1040 = getelementptr [2 x i8], ptr @.str78, i64 0, i64 0
+  %t1041 = call ptr @strdup(ptr %t1040)
+  %t1042 = getelementptr i8, ptr %t2, i64 0
+  store ptr %t1041, ptr %t1042
+  %t1043 = load i64, ptr %t2
+  %t1044 = sext i32 %t1043 to i64
+  ret i64 %t1044
 L448:
   br label %L446
 L446:
-  %t938 = sext i32 0 to i64
-  %t937 = icmp ne i64 %t938, 0
-  br i1 %t937, label %L445, label %L447
+  %t1046 = sext i32 0 to i64
+  %t1045 = icmp ne i64 %t1046, 0
+  br i1 %t1045, label %L445, label %L447
 L447:
   br label %L113
 L138:
-  %t939 = sext i32 82 to i64
-  store i64 %t939, ptr %t2
-  %t940 = call ptr @malloc(i64 2)
-  store ptr %t940, ptr %t2
-  %t941 = load i64, ptr %t375
-  %t942 = load ptr, ptr %t2
-  %t944 = sext i32 0 to i64
-  %t943 = getelementptr ptr, ptr %t942, i64 %t944
-  %t945 = sext i32 %t941 to i64
-  store i64 %t945, ptr %t943
-  %t946 = load ptr, ptr %t2
-  %t948 = sext i32 1 to i64
-  %t947 = getelementptr ptr, ptr %t946, i64 %t948
-  %t949 = sext i32 0 to i64
-  store i64 %t949, ptr %t947
-  %t950 = load i64, ptr %t2
-  %t951 = sext i32 %t950 to i64
-  ret i64 %t951
+  %t1047 = getelementptr i8, ptr %t2, i64 0
+  %t1048 = sext i32 82 to i64
+  store i64 %t1048, ptr %t1047
+  %t1049 = call ptr @malloc(i64 2)
+  %t1050 = getelementptr i8, ptr %t2, i64 0
+  store ptr %t1049, ptr %t1050
+  %t1051 = load i64, ptr %t391
+  %t1052 = getelementptr i8, ptr %t2, i64 0
+  %t1053 = load i64, ptr %t1052
+  %t1055 = inttoptr i64 %t1053 to ptr
+  %t1056 = sext i32 0 to i64
+  %t1054 = getelementptr ptr, ptr %t1055, i64 %t1056
+  %t1057 = sext i32 %t1051 to i64
+  store i64 %t1057, ptr %t1054
+  %t1058 = getelementptr i8, ptr %t2, i64 0
+  %t1059 = load i64, ptr %t1058
+  %t1061 = inttoptr i64 %t1059 to ptr
+  %t1062 = sext i32 1 to i64
+  %t1060 = getelementptr ptr, ptr %t1061, i64 %t1062
+  %t1063 = sext i32 0 to i64
+  store i64 %t1063, ptr %t1060
+  %t1064 = load i64, ptr %t2
+  %t1065 = sext i32 %t1064 to i64
+  ret i64 %t1065
 L449:
   br label %L113
 L113:
@@ -2762,42 +2890,46 @@ L113:
 
 define dso_local i64 @lexer_next(ptr %t0) {
 entry:
-  %t1 = load ptr, ptr %t0
-  %t2 = icmp ne ptr %t1, null
-  br i1 %t2, label %L0, label %L2
+  %t1 = getelementptr i8, ptr %t0, i64 0
+  %t2 = load i64, ptr %t1
+  %t3 = icmp ne i64 %t2, 0
+  br i1 %t3, label %L0, label %L2
 L0:
-  %t3 = sext i32 0 to i64
-  store i64 %t3, ptr %t0
-  %t4 = load ptr, ptr %t0
-  %t5 = ptrtoint ptr %t4 to i64
-  ret i64 %t5
+  %t4 = getelementptr i8, ptr %t0, i64 0
+  %t5 = sext i32 0 to i64
+  store i64 %t5, ptr %t4
+  %t6 = getelementptr i8, ptr %t0, i64 0
+  %t7 = load i64, ptr %t6
+  ret i64 %t7
 L3:
   br label %L2
 L2:
-  %t6 = call i64 @read_token(ptr %t0)
-  ret i64 %t6
+  %t8 = call i64 @read_token(ptr %t0)
+  ret i64 %t8
 L4:
   ret i64 0
 }
 
 define dso_local i64 @lexer_peek(ptr %t0) {
 entry:
-  %t1 = load ptr, ptr %t0
-  %t3 = ptrtoint ptr %t1 to i64
-  %t4 = icmp eq i64 %t3, 0
-  %t2 = zext i1 %t4 to i64
-  %t5 = icmp ne i64 %t2, 0
+  %t1 = getelementptr i8, ptr %t0, i64 0
+  %t2 = load i64, ptr %t1
+  %t4 = icmp eq i64 %t2, 0
+  %t3 = zext i1 %t4 to i64
+  %t5 = icmp ne i64 %t3, 0
   br i1 %t5, label %L0, label %L2
 L0:
   %t6 = call i64 @read_token(ptr %t0)
-  store i64 %t6, ptr %t0
-  %t7 = sext i32 1 to i64
-  store i64 %t7, ptr %t0
+  %t7 = getelementptr i8, ptr %t0, i64 0
+  store i64 %t6, ptr %t7
+  %t8 = getelementptr i8, ptr %t0, i64 0
+  %t9 = sext i32 1 to i64
+  store i64 %t9, ptr %t8
   br label %L2
 L2:
-  %t8 = load ptr, ptr %t0
-  %t9 = ptrtoint ptr %t8 to i64
-  ret i64 %t9
+  %t10 = getelementptr i8, ptr %t0, i64 0
+  %t11 = load i64, ptr %t10
+  ret i64 %t11
 L3:
   ret i64 0
 }

@@ -1001,39 +1001,45 @@ L0:
   %t14 = sext i32 %t13 to i64
   %t15 = getelementptr ptr, ptr %t12, i64 %t14
   %t16 = load ptr, ptr %t15
-  store ptr %t16, ptr %t1
-  %t17 = load ptr, ptr @macro_bodies
-  %t18 = load i64, ptr %t3
-  %t19 = sext i32 %t18 to i64
-  %t20 = getelementptr ptr, ptr %t17, i64 %t19
-  %t21 = load ptr, ptr %t20
-  store ptr %t21, ptr %t1
-  %t22 = load ptr, ptr @macro_nparams
-  %t23 = load i64, ptr %t3
-  %t24 = sext i32 %t23 to i64
-  %t25 = getelementptr ptr, ptr %t22, i64 %t24
-  %t26 = load ptr, ptr %t25
-  store ptr %t26, ptr %t1
-  %t27 = load ptr, ptr @macro_funclike
-  %t28 = load i64, ptr %t3
-  %t29 = sext i32 %t28 to i64
-  %t30 = getelementptr ptr, ptr %t27, i64 %t29
-  %t31 = load ptr, ptr %t30
-  store ptr %t31, ptr %t1
-  %t32 = load ptr, ptr @macro_defined
-  %t33 = load i64, ptr %t3
-  %t34 = sext i32 %t33 to i64
-  %t35 = getelementptr ptr, ptr %t32, i64 %t34
-  %t36 = load ptr, ptr %t35
-  store ptr %t36, ptr %t1
+  %t17 = getelementptr i8, ptr %t1, i64 0
+  store ptr %t16, ptr %t17
+  %t18 = load ptr, ptr @macro_bodies
+  %t19 = load i64, ptr %t3
+  %t20 = sext i32 %t19 to i64
+  %t21 = getelementptr ptr, ptr %t18, i64 %t20
+  %t22 = load ptr, ptr %t21
+  %t23 = getelementptr i8, ptr %t1, i64 0
+  store ptr %t22, ptr %t23
+  %t24 = load ptr, ptr @macro_nparams
+  %t25 = load i64, ptr %t3
+  %t26 = sext i32 %t25 to i64
+  %t27 = getelementptr ptr, ptr %t24, i64 %t26
+  %t28 = load ptr, ptr %t27
+  %t29 = getelementptr i8, ptr %t1, i64 0
+  store ptr %t28, ptr %t29
+  %t30 = load ptr, ptr @macro_funclike
+  %t31 = load i64, ptr %t3
+  %t32 = sext i32 %t31 to i64
+  %t33 = getelementptr ptr, ptr %t30, i64 %t32
+  %t34 = load ptr, ptr %t33
+  %t35 = getelementptr i8, ptr %t1, i64 0
+  store ptr %t34, ptr %t35
+  %t36 = load ptr, ptr @macro_defined
   %t37 = load i64, ptr %t3
   %t38 = sext i32 %t37 to i64
-  store i64 %t38, ptr %t1
+  %t39 = getelementptr ptr, ptr %t36, i64 %t38
+  %t40 = load ptr, ptr %t39
+  %t41 = getelementptr i8, ptr %t1, i64 0
+  store ptr %t40, ptr %t41
+  %t42 = load i64, ptr %t3
+  %t43 = getelementptr i8, ptr %t1, i64 0
+  %t44 = sext i32 %t42 to i64
+  store i64 %t44, ptr %t43
   br label %L2
 L2:
-  %t39 = load i64, ptr %t1
-  %t40 = sext i32 %t39 to i64
-  ret i64 %t40
+  %t45 = load i64, ptr %t1
+  %t46 = sext i32 %t45 to i64
+  ret i64 %t46
 L3:
   ret i64 0
 }
