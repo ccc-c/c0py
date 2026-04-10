@@ -183,17 +183,26 @@ static int parse_private_key_pem(const char *pem, uint8_t *n, size_t *n_len, uin
             continue;
         }
         
-        if (len > 256) len = 256;
+        size_t orig_len = len;
+        size_t copy_len = len;
+        const uint8_t *data_ptr = der + pos;
         
-        if (idx == 1 && *n_len == 0) {
-            *n_len = len;
-            memcpy(n, der + pos, len);
-        } else if (idx == 3 && *d_len == 0) {
-            *d_len = len;
-            memcpy(d, der + pos, len);
+        if (copy_len > 0 && data_ptr[0] == 0x00) {
+            data_ptr++;
+            copy_len--;
         }
         
-        pos += len;
+        if (copy_len > 256) copy_len = 256;
+        
+        if (idx == 0 && *n_len == 0) {
+            *n_len = copy_len;
+            memcpy(n, data_ptr, copy_len);
+        } else if (idx == 2 && *d_len == 0) {
+            *d_len = copy_len;
+            memcpy(d, data_ptr, copy_len);
+        }
+        
+        pos += orig_len;
         idx++;
     }
     
@@ -328,6 +337,7 @@ static int remove_pkcs1_padding(const uint8_t *input, size_t input_len, uint8_t 
 int ssl_socket_accept(ssl_socket *sock, ssl_socket *client, const char *cert_pem, const char *key_pem) {
     memset(client, 0, sizeof(ssl_socket));
     ssl_context_init(&client->ctx);
+    client->ctx.is_server = 1;
     client->fd = -1;
     client->connected = 0;
     
@@ -497,6 +507,13 @@ int ssl_socket_accept(ssl_socket *sock, ssl_socket *client, const char *cert_pem
                 rsa_decrypt(private_n, private_n_len, private_d, private_d_len,
                            cipher_data, cipher_len, decrypted, &decrypted_len);
                 
+                if (decrypted_len < private_n_len) {
+                    size_t pad_size = private_n_len - decrypted_len;
+                    memmove(decrypted + pad_size, decrypted, decrypted_len);
+                    memset(decrypted, 0, pad_size);
+                    decrypted_len = private_n_len;
+                }
+                
                 fprintf(stderr, "DEBUG: decrypted[0]=0x%02x, decrypted[1]=0x%02x, decrypted[2]=0x%02x, decrypted[3]=0x%02x\n",
                         decrypted[0], decrypted[1], decrypted[2], decrypted[3]);
                 fprintf(stderr, "DEBUG: decrypted_len = %zu\n", decrypted_len);
@@ -560,7 +577,8 @@ int ssl_socket_read(ssl_socket *sock, uint8_t *buf, size_t len) {
     if (!sock->connected) {
         return recv(sock->fd, buf, len, 0);
     }
-    
+
+again:;
     uint8_t header[5];
     size_t pos = 0;
     if (read_until(sock->fd, header, &pos, 5) != 0) return -1;
@@ -576,6 +594,11 @@ int ssl_socket_read(ssl_socket *sock, uint8_t *buf, size_t len) {
         return -1;
     }
     
+    if (header[0] == 0x14) { // ChangeCipherSpec
+        free(record);
+        goto again;
+    }
+    
     uint8_t content_type;
     uint8_t plaintext[TLS_MAX_MESSAGE_LEN];
     size_t plain_len;
@@ -584,6 +607,14 @@ int ssl_socket_read(ssl_socket *sock, uint8_t *buf, size_t len) {
     free(record);
     
     if (ret != 0) return -1;
+    
+    if (content_type == 0x16) { // Handshake (e.g. Finished)
+        goto again;
+    }
+    
+    if (content_type != 0x17) {
+        return -1;
+    }
     
     if (plain_len > len) plain_len = len;
     memcpy(buf, plaintext, plain_len);

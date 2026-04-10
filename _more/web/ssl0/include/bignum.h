@@ -4,7 +4,7 @@
 #include <stddef.h>
 #include <stdint.h>
 
-#define MAX_BIGNUM_WORDS 64
+#define MAX_BIGNUM_WORDS 130
 
 typedef struct {
     uint32_t words[MAX_BIGNUM_WORDS]; /* little-endian: words[0] is least significant */

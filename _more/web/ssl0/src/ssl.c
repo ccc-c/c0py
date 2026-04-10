@@ -114,14 +114,17 @@ int ssl_encrypt_record(ssl_context *ctx,
         padded[i] = (uint8_t)(padded_len - plain_len);
     }
     
+    uint8_t *enc_key = ctx->is_server ? ctx->server_write_key : ctx->client_write_key;
+    uint8_t *enc_iv = ctx->is_server ? ctx->server_write_iv : ctx->client_write_iv;
+    
     uint8_t encrypted[SSL_MAX_PLAINTEXT_LEN + 32];
-    aes_cbc_encrypt(ctx->client_write_key, ctx->client_write_iv, padded, padded_len, encrypted);
+    aes_cbc_encrypt(enc_key, enc_iv, padded, padded_len, encrypted);
     
     memcpy(ciphertext, record_header, 5);
     memcpy(ciphertext + 5, encrypted, padded_len);
     *cipher_len = padded_len + 5;
     
-    memcpy(ctx->client_write_iv, encrypted + padded_len - 16, 16);
+    memcpy(enc_iv, encrypted + padded_len - 16, 16);
     
     return 0;
 }
@@ -137,8 +140,11 @@ int ssl_decrypt_record(ssl_context *ctx,
     size_t cipher_data_len = cipher_len - 5;
     if (cipher_data_len % 16 != 0) return -3;
     
+    uint8_t *dec_key = ctx->is_server ? ctx->client_write_key : ctx->server_write_key;
+    uint8_t *dec_iv = ctx->is_server ? ctx->client_write_iv : ctx->server_write_iv;
+    
     uint8_t decrypted[SSL_MAX_RECORD_LEN];
-    aes_cbc_decrypt(ctx->server_write_key, ctx->server_write_iv, ciphertext + 5, cipher_data_len, decrypted);
+    aes_cbc_decrypt(dec_key, dec_iv, ciphertext + 5, cipher_data_len, decrypted);
     
     size_t pad_len = decrypted[cipher_data_len - 1];
     if (pad_len > 16 || pad_len == 0) return -5;
@@ -148,7 +154,7 @@ int ssl_decrypt_record(ssl_context *ctx,
     memcpy(plaintext, decrypted, *plain_len);
     *content_type = ciphertext[0];
     
-    memcpy(ctx->server_write_iv, ciphertext + 5 + cipher_data_len - 16, 16);
+    memcpy(dec_iv, ciphertext + 5 + cipher_data_len - 16, 16);
     
     return 0;
 }

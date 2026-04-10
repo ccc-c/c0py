@@ -47,6 +47,7 @@ typedef struct {
     uint8_t client_write_iv[16];
     uint8_t server_write_iv[16];
     int has_keys;
+    int is_server;
 } ssl_context;
 
 void ssl_context_init(ssl_context *ctx);
