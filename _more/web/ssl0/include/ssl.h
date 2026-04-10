@@ -42,10 +42,12 @@ typedef struct {
 
 typedef struct {
     uint8_t master_secret[48];
+    uint8_t client_write_mac_key[32];
+    uint8_t server_write_mac_key[32];
     uint8_t client_write_key[16];
     uint8_t server_write_key[16];
-    uint8_t client_write_iv[16];
-    uint8_t server_write_iv[16];
+    uint64_t client_seq_num;
+    uint64_t server_seq_num;
     int has_keys;
     int is_server;
 } ssl_context;
@@ -74,12 +76,8 @@ int ssl_compute_master_secret(const uint8_t *pre_master_secret, size_t pms_len,
                                const uint8_t *server_random, size_t sr_len,
                                uint8_t *master_secret);
 
-int ssl_derive_keys(const uint8_t *master_secret,
+int ssl_derive_keys(ssl_context *ctx, const uint8_t *master_secret,
                     const uint8_t *client_random, size_t cr_len,
-                    const uint8_t *server_random, size_t sr_len,
-                    uint8_t *client_write_key, size_t *client_key_len,
-                    uint8_t *server_write_key, size_t *server_key_len,
-                    uint8_t *client_write_iv, size_t *client_iv_len,
-                    uint8_t *server_write_iv, size_t *server_iv_len);
+                    const uint8_t *server_random, size_t sr_len);
 
 #endif

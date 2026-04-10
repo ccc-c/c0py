@@ -4,6 +4,8 @@
 #include "../include/rand.h"
 #include "../include/rsa.h"
 #include "../include/bignum.h"
+#include "../include/sha.h"
+#include "../include/crypto.h"
 #include <string.h>
 #include <stdlib.h>
 #include <stdio.h>
@@ -261,7 +263,7 @@ static int build_server_hello(uint8_t *buf, size_t *len,
     buf[pos++] = 0x00;
     
     buf[pos++] = 0x00;
-    buf[pos++] = 0x2f;
+    buf[pos++] = 0x3c;
     
     buf[pos++] = 0x00;
     
@@ -419,6 +421,12 @@ int ssl_socket_accept(ssl_socket *sock, ssl_socket *client, const char *cert_pem
     uint8_t client_random[32];
     memcpy(client_random, recv_buf + 11, 32);
     
+    uint8_t handshake_log[8192];
+    size_t hl_len = 0;
+    
+    memcpy(handshake_log + hl_len, recv_buf + 5, incoming_record_len);
+    hl_len += incoming_record_len;
+    
     uint8_t server_random[32];
     rand_bytes(server_random, 32);
     
@@ -452,6 +460,13 @@ int ssl_socket_accept(ssl_socket *sock, ssl_socket *client, const char *cert_pem
     uint8_t handshake_shd[4];
     size_t hs_shd_len = 0;
     build_handshake_message(handshake_shd, &hs_shd_len, 0x0e, server_hello_done, shd_len);
+    
+    memcpy(handshake_log + hl_len, handshake_server_hello, hs_len);
+    hl_len += hs_len;
+    memcpy(handshake_log + hl_len, handshake_cert, hs_cert_len);
+    hl_len += hs_cert_len;
+    memcpy(handshake_log + hl_len, handshake_shd, hs_shd_len);
+    hl_len += hs_shd_len;
     
     uint8_t record_server_hello[2048];
     size_t record_len = 0;
@@ -541,6 +556,10 @@ int ssl_socket_accept(ssl_socket *sock, ssl_socket *client, const char *cert_pem
                                      client_random, 32, server_random, 32,
                                      pre_master_secret, 48);
                 client->connected = 1;
+                
+                memcpy(handshake_log + hl_len, pRecordStart + pos, 4 + msg_len);
+                hl_len += 4 + msg_len;
+                
                 break;
             }
             
@@ -549,19 +568,56 @@ int ssl_socket_accept(ssl_socket *sock, ssl_socket *client, const char *cert_pem
         break;
     }
     
-    uint8_t change_cipher_spec[6];
-    change_cipher_spec[0] = 0x14;
-    change_cipher_spec[1] = 0x03;
-    change_cipher_spec[2] = 0x03;
-    change_cipher_spec[3] = 0x00;
-    change_cipher_spec[4] = 0x01;
-    change_cipher_spec[5] = 0x01;
+    while(1) {
+        uint8_t hdr[5];
+        size_t rpos = 0;
+        if (read_until(client->fd, hdr, &rpos, 5) != 0) goto handshake_err;
+        uint16_t rlen = (hdr[3] << 8) | hdr[4];
+        uint8_t *rec = (uint8_t *)malloc(rlen + 5);
+        memcpy(rec, hdr, 5);
+        rpos = 5;
+        if (read_until(client->fd, rec, &rpos, 5 + rlen) != 0) { free(rec); goto handshake_err; }
+        
+        if (hdr[0] == 0x14) { 
+            free(rec);
+            continue;
+        }
+        if (hdr[0] == 0x16) { 
+            uint8_t ctype;
+            uint8_t ptext[TLS_MAX_MESSAGE_LEN];
+            size_t plen;
+            int dec_ret = ssl_decrypt_record(&client->ctx, rec, rpos, &ctype, ptext, &plen);
+            if (dec_ret == 0) {
+                if (ctype == 0x16 && ptext[0] == 0x14) {
+                    memcpy(handshake_log + hl_len, ptext, plen);
+                    hl_len += plen;
+                    free(rec);
+                    break;
+                }
+            }
+        }
+        free(rec);
+    }
+    
+    uint8_t handshake_hash[32];
+    sha256(handshake_log, hl_len, handshake_hash);
+    uint8_t verify_data[12];
+    tls_prf(client->ctx.master_secret, 48, "server finished", handshake_hash, 32, verify_data, 12);
+    
+    uint8_t server_finished_msg[16];
+    server_finished_msg[0] = 0x14;
+    server_finished_msg[1] = 0x00;
+    server_finished_msg[2] = 0x00;
+    server_finished_msg[3] = 0x0c;
+    memcpy(server_finished_msg + 4, verify_data, 12);
+    
+    uint8_t change_cipher_spec[6] = {0x14, 0x03, 0x03, 0x00, 0x01, 0x01};
     send_all(client->fd, change_cipher_spec, 6);
     
-    uint8_t finished[32];
-    size_t finished_len;
-    ssl_encrypt_record(&client->ctx, 0x16, (uint8_t*)"finished", 8, finished, &finished_len);
-    send_all(client->fd, finished, finished_len);
+    uint8_t finished_record[256];
+    size_t finished_record_len;
+    ssl_encrypt_record(&client->ctx, 0x16, server_finished_msg, 16, finished_record, &finished_record_len);
+    send_all(client->fd, finished_record, finished_record_len);
     
     x509_free(&cert);
     return 0;
