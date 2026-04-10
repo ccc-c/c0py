@@ -66,18 +66,20 @@ int main() {
     print_hex("Extracted n", n, n_len);
     print_hex("Extracted e", e, e_len);
     x509_free(&cert);
-    free(pem);
+    // pem is kept alive for ssl_socket_accept below
     
     printf("\n=== SSL Socket Test ===\n");
     ssl_socket server, client;
     ret = ssl_socket_init(&server);
     if (ret != 0) {
+        free(pem);
         printf("ssl_socket_init failed\n");
         return 1;
     }
     
     ret = ssl_socket_bind(&server, 8444);
     if (ret != 0) {
+        free(pem);
         printf("ssl_socket_bind failed: %d\n", ret);
         return 1;
     }
@@ -85,8 +87,9 @@ int main() {
     printf("Server listening on port 8444\n");
     printf("Waiting for connection...\n");
     
-    ret = ssl_socket_accept(&server, &client, "./https/cert.pem");
+    ret = ssl_socket_accept(&server, &client, pem);
     if (ret != 0) {
+        free(pem);
         printf("ssl_socket_accept failed: %d\n", ret);
         return 1;
     }
@@ -106,6 +109,8 @@ int main() {
     
     ssl_socket_close(&client);
     ssl_socket_close(&server);
+    
+    free(pem);
     
     printf("\n=== All SSL Socket tests passed ===\n");
     return 0;
