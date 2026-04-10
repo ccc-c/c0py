@@ -2,6 +2,7 @@
 #include "../include/crypto.h"
 #include "../include/sha.h"
 #include "../include/aes.h"
+#include "../include/sha1.h"
 #include "../include/rand.h"
 #include <string.h>
 #include <stdio.h>
@@ -45,13 +46,13 @@ int ssl_derive_keys(ssl_context *ctx, const uint8_t *master_secret,
     memcpy(seed + seed_len, client_random, cr_len);
     seed_len += cr_len;
     
-    uint8_t key_block[96];
-    tls_prf(master_secret, 48, "key expansion", seed, seed_len, key_block, 96);
+    uint8_t key_block[72];
+    tls_prf(master_secret, 48, "key expansion", seed, seed_len, key_block, 72);
     
-    memcpy(ctx->client_write_mac_key, key_block, 32);
-    memcpy(ctx->server_write_mac_key, key_block + 32, 32);
-    memcpy(ctx->client_write_key, key_block + 64, 16);
-    memcpy(ctx->server_write_key, key_block + 80, 16);
+    memcpy(ctx->client_write_mac_key, key_block, 20);
+    memcpy(ctx->server_write_mac_key, key_block + 20, 20);
+    memcpy(ctx->client_write_key, key_block + 40, 16);
+    memcpy(ctx->server_write_key, key_block + 56, 16);
     
     return 0;
 }
@@ -106,16 +107,16 @@ int ssl_encrypt_record(ssl_context *ctx,
     memcpy(mac_data + md_len, plaintext, plain_len);
     md_len += plain_len;
     
-    uint8_t mac_out[32];
-    hmac_sha256(mac_key, 32, mac_data, md_len, mac_out);
+    uint8_t mac_out[20];
+    hmac_sha1(mac_key, 20, mac_data, md_len, mac_out);
     
     (*seq_ptr)++;
     
-    size_t payload_len = plain_len + 32;
+    size_t payload_len = plain_len + 20;
     uint8_t padded[SSL_MAX_PLAINTEXT_LEN + 64];
     size_t padded_len = ((payload_len + 16) / 16) * 16;
     memcpy(padded, plaintext, plain_len);
-    memcpy(padded + plain_len, mac_out, 32);
+    memcpy(padded + plain_len, mac_out, 20);
     for (size_t i = payload_len; i < padded_len; i++) {
         padded[i] = (uint8_t)(padded_len - payload_len - 1);
     }
@@ -143,7 +144,7 @@ int ssl_decrypt_record(ssl_context *ctx,
                        uint8_t *plaintext, size_t *plain_len) {
     if (!ctx->has_keys) return -1;
     
-    if (cipher_len < 5 + 16 + 32) return -2;
+    if (cipher_len < 5 + 16 + 20) return -2;
     
     size_t cipher_data_len = cipher_len - 5 - 16;
     if (cipher_data_len % 16 != 0) return -3;
@@ -161,9 +162,9 @@ int ssl_decrypt_record(ssl_context *ctx,
     if (pad_len >= cipher_data_len) return -5;
     
     size_t payload_and_mac_len = cipher_data_len - pad_len - 1;
-    if (payload_and_mac_len < 32 || payload_and_mac_len > SSL_MAX_PLAINTEXT_LEN + 32) return -4;
+    if (payload_and_mac_len < 20 || payload_and_mac_len > SSL_MAX_PLAINTEXT_LEN + 20) return -4;
     
-    *plain_len = payload_and_mac_len - 32;
+    *plain_len = payload_and_mac_len - 20;
     *content_type = ciphertext[0];
     memcpy(plaintext, decrypted, *plain_len);
     

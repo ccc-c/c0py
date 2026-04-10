@@ -263,7 +263,7 @@ static int build_server_hello(uint8_t *buf, size_t *len,
     buf[pos++] = 0x00;
     
     buf[pos++] = 0x00;
-    buf[pos++] = 0x3c;
+    buf[pos++] = 0x2f;
     
     buf[pos++] = 0x00;
     
@@ -388,7 +388,7 @@ int ssl_socket_accept(ssl_socket *sock, ssl_socket *client, const char *cert_pem
         return -1;
     }
     
-    uint8_t recv_buf[2048];
+    uint8_t recv_buf[16384];
     size_t recv_pos = 0;
     
     if (read_until(client->fd, recv_buf, &recv_pos, 5) != 0) {
@@ -417,6 +417,10 @@ int ssl_socket_accept(ssl_socket *sock, ssl_socket *client, const char *cert_pem
         printf("DEBUG: Not a ClientHello\n");
         goto handshake_err;
     }
+    
+    // session ID length is at recv_buf + 43
+    uint8_t session_id_len = recv_buf[43];
+    size_t cipher_suites_offset = 44 + session_id_len;
     
     uint8_t client_random[32];
     memcpy(client_random, recv_buf + 11, 32);

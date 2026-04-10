@@ -6,7 +6,7 @@ cd "$(dirname "$0")"
 
 echo "=== Building httpd_ssl0 ==="
 gcc -o https/httpd_ssl0 https/httpd_ssl0.c \
-    src/ssl_socket.c src/ssl.c src/crypto.c src/sha.c src/aes.c \
+    src/ssl_socket.c src/ssl.c src/crypto.c src/sha.c src/sha1.c src/aes.c \
     src/bignum.c src/rsa.c src/certificate.c src/rand.c \
     -I include
 
