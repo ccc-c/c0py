@@ -34,9 +34,16 @@ if ! command -v clang >/dev/null 2>&1; then
     exit 1
 fi
 
+TARGET="$(cd "$(dirname "$0")" && ./detect_target.sh)"
+if [ -z "$TARGET" ]; then
+    echo "ERROR: could not detect target"
+    exit 1
+fi
+
 echo "=== Stage 4: LLVM IR code generation test ==="
 echo "    lli:   $LLI"
 echo "    clang: $(clang --version | head -1)"
+echo "    target: $TARGET"
 echo ""
 
 # ── Step 0: build c0c ─────────────────────────────────────────────────────────
@@ -51,7 +58,7 @@ echo ""
 
 # ── Step 1: also verify Stage 3 still passes ─────────────────────────────────
 echo "[1] Stage 3 regression..."
-bash "$(dirname "$0")/test_genc.sh" > /dev/null 2>&1 \
+bash "$(dirname "$0")/test_gen_c.sh" > /dev/null 2>&1 \
     && echo "    OK: Stage 3 still passes" \
     || { echo "    FAIL: Stage 3 regressed"; exit 1; }
 echo ""
@@ -66,7 +73,7 @@ for src in "$CASEDIR"/t*.c; do
     ref_bin="$BUILD/ll/${base}_ref"
 
     # compile with c0c
-    if ! "$BUILD/c0c" "$src" -o "$ll_file" 2>"$BUILD/ll/${base}_c0c.err"; then
+    if ! "$BUILD/c0c" "$src" -o "$ll_file" -target "$TARGET" 2>"$BUILD/ll/${base}_c0c.err"; then
         ERRORS="$ERRORS\n  FAIL  $base  [c0c parse/codegen error]"
         FAIL=$((FAIL+1))
         continue

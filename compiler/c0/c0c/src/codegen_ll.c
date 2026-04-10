@@ -223,6 +223,7 @@ static int slit_intern(const char *tok) {
 struct Codegen {
     FILE       *out;
     const char *src;
+    const char *target;
     Scope      *scope;
     int         reg;          /* next SSA register */
     int         lbl;          /* label counter for named labels */
@@ -1133,9 +1134,10 @@ void codegen_emit(Codegen *cg, Node *root) {
 
     fprintf(cg->out,"; ModuleID = '%s'\n",cg->src);
     fprintf(cg->out,"source_filename = \"%s\"\n",cg->src);
+    const char *triple = cg->target ? cg->target : "x86_64-pc-linux-gnu";
     fprintf(cg->out,"target datalayout = \"e-m:e-p270:32:32-p271:32:32-p272:64:64"
             "-i64:64-i128:128-f80:128-n8:16:32:64-S128\"\n");
-    fprintf(cg->out,"target triple = \"x86_64-pc-linux-gnu\"\n\n");
+    fprintf(cg->out,"target triple = \"%s\"\n\n", triple);
 
     prescan(cg,root);
 
@@ -1174,9 +1176,9 @@ void codegen_emit(Codegen *cg, Node *root) {
     cg->scope = scope_pop(cg->scope);
 }
 
-Codegen *codegen_new(FILE *out, const char *src){
+Codegen *codegen_new(FILE *out, const char *src, const char *target){
     Codegen *cg=calloc(1,sizeof(Codegen));
-    cg->out=out; cg->src=src;
+    cg->out=out; cg->src=src; cg->target=target;
     return cg;
 }
 void codegen_free(Codegen *cg){

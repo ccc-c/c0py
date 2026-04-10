@@ -18,7 +18,7 @@
 typedef struct Codegen Codegen;
 
 /* Create a codegen that writes to 'out'. */
-Codegen *codegen_new(FILE *out, const char *source_filename);
+Codegen *codegen_new(FILE *out, const char *source_filename, const char *target);
 
 /* Generate IR for the entire translation unit. */
 void codegen_emit(Codegen *cg, Node *root);

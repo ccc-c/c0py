@@ -18,17 +18,20 @@
 int main(int argc, char *argv[]) {
     const char *input  = NULL;
     const char *output = NULL;
+    const char *target = NULL;
 
     for (int i = 1; i < argc; i++) {
         if (strcmp(argv[i], "-o") == 0 && i + 1 < argc) {
             output = argv[++i];
+        } else if (strcmp(argv[i], "-target") == 0 && i + 1 < argc) {
+            target = argv[++i];
         } else if (argv[i][0] != '-') {
             input = argv[i];
         }
     }
 
     if (!input) {
-        fprintf(stderr, "usage: c0c <input.c> [-o output.ll]\n");
+        fprintf(stderr, "usage: c0c <input.c> [-o output.ll] [-target <triple>]\n");
         return 1;
     }
 
@@ -51,7 +54,7 @@ int main(int argc, char *argv[]) {
     }
 
     /* Generate */
-    Codegen *cg = codegen_new(out, input);
+    Codegen *cg = codegen_new(out, input, target);
     codegen_emit(cg, root);
     codegen_free(cg);
 
