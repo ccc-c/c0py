@@ -43,7 +43,7 @@ int main() {
         }
         
         free(pem);
-    skip_cert:
+    skip_cert:;
     }
     
     /* x509 get public key */
@@ -70,7 +70,7 @@ int main() {
             x509_free(&cert);
         }
         free(pem);
-    skip_pk:
+    skip_pk:;
     }
     
     /* ssl_socket_init */
