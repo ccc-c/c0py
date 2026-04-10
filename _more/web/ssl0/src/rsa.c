@@ -1,5 +1,6 @@
 #include "../include/rsa.h"
 #include "../include/bignum.h"
+#include <stdio.h>
 
 int rsa_encrypt(const uint8_t *n, size_t n_len,
                 const uint8_t *e, size_t e_len,

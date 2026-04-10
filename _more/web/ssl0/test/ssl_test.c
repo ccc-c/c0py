@@ -1,118 +1,117 @@
 #include <stdio.h>
 #include <string.h>
-#include <stdlib.h>
 #include "../include/ssl.h"
-#include "../include/sha.h"
-#include "../include/aes.h"
-
-void print_hex(const char *label, const uint8_t *data, size_t len) {
-    printf("%s: ", label);
-    for (size_t i = 0; i < len; i++) printf("%02x", data[i]);
-    printf("\n");
-}
+#include "../include/crypto.h"
+#include "../include/common.h"
 
 int main() {
-    printf("=== SSL Test ===\n");
+    printf("=== ssl tests ===\n\n");
     
-    ssl_context ctx;
-    ssl_context_init(&ctx);
-    
-    uint8_t client_random[48] = "123456789012345678901234567890123456789012345678";
-    uint8_t server_random[48] = "abcdefghijklmnopqrstuvwxyz0123456789ABCDEFGHIJKL";
-    uint8_t pre_master_secret[] = {0x03, 0x01};
-    
-    printf("Testing: ssl_compute_master_secret\n");
-    uint8_t master_secret[48] = {0};
-    int ret = ssl_compute_master_secret(pre_master_secret, 2,
-                                         client_random, 48,
-                                         server_random, 48,
-                                         master_secret);
-    if (ret != 0) {
-        printf("ssl_compute_master_secret failed: %d\n", ret);
-        return 1;
-    }
-    print_hex("Master Secret", master_secret, 48);
-    
-    printf("\nTesting: ssl_derive_keys\n");
-    uint8_t client_write_key[16], server_write_key[16];
-    uint8_t client_write_iv[16], server_write_iv[16];
-    size_t client_key_len, server_key_len, client_iv_len, server_iv_len;
-    ret = ssl_derive_keys(master_secret,
-                          client_random, 48,
-                          server_random, 48,
-                          client_write_key, &client_key_len,
-                          server_write_key, &server_key_len,
-                          client_write_iv, &client_iv_len,
-                          server_write_iv, &server_iv_len);
-    if (ret != 0) {
-        printf("ssl_derive_keys failed: %d\n", ret);
-        return 1;
-    }
-    print_hex("Client Write Key", client_write_key, 16);
-    print_hex("Server Write Key", server_write_key, 16);
-    print_hex("Client Write IV", client_write_iv, 16);
-    print_hex("Server Write IV", server_write_iv, 16);
-    
-    printf("\nTesting: ssl_handshake_client\n");
-    ret = ssl_handshake_client(&ctx, NULL, 0, client_random, 48, server_random, 48, pre_master_secret, 2);
-    if (ret != 0) {
-        printf("ssl_handshake_client failed: %d\n", ret);
-        return 1;
-    }
-    print_hex("Master Secret in ctx", ctx.master_secret, 48);
-    printf("has_keys = %d\n", ctx.has_keys);
-    
-    printf("\n=== Direct AES-CBC Test ===\n");
-    uint8_t test_plain[16] = "Hello TLS!";
-    for (int i = 11; i < 16; i++) test_plain[i] = 5;
-    uint8_t test_key[16] = {0};
-    uint8_t test_iv[16] = {0};
-    uint8_t test_enc[16], test_dec[16];
-    aes_cbc_encrypt(test_key, test_iv, test_plain, 16, test_enc);
-    print_hex("Encrypted", test_enc, 16);
-    aes_cbc_decrypt(test_key, test_iv, test_enc, 16, test_dec);
-    test_dec[15] = '\0';
-    printf("Decrypted: %s\n", test_dec);
-    
-    printf("\nTesting: ssl_encrypt_record\n");
-    uint8_t plaintext[] = "Hello TLS!";
-    uint8_t iv_before[16];
-    memcpy(iv_before, ctx.client_write_iv, 16);
-    uint8_t ciphertext[64];
-    size_t cipher_len;
-    ret = ssl_encrypt_record(&ctx, SSL_CONTENT_TYPE_APPLICATION_DATA,
-                             plaintext, 11,
-                             ciphertext, &cipher_len);
-    if (ret != 0) {
-        printf("ssl_encrypt_record failed: %d\n", ret);
-        return 1;
-    }
-    print_hex("Ciphertext", ciphertext, cipher_len);
-    
-    printf("\nTesting: ssl_decrypt_record (using same keys)\n");
-    uint8_t decrypted[64];
-    size_t plain_len;
-    uint8_t content_type;
-    memcpy(ctx.server_write_key, ctx.client_write_key, 16);
-    memcpy(ctx.server_write_iv, iv_before, 16);
-    
-    ret = ssl_decrypt_record(&ctx, ciphertext, cipher_len,
-                             &content_type, decrypted, &plain_len);
-    if (ret != 0) {
-        printf("ssl_decrypt_record failed: %d\n", ret);
-        return 1;
-    }
-    decrypted[plain_len] = '\0';
-    printf("Content Type: %d\n", content_type);
-    printf("Decrypted: %s\n", decrypted);
-    
-    if (plain_len != 11 || memcmp(decrypted, plaintext, plain_len) != 0) {
-        printf("\n=== SSL test FAILED ===\n");
-        return 1;
+    /* ssl_context_init/free */
+    {
+        ssl_context ctx;
+        ssl_context_init(&ctx);
+        CHECK(ctx.has_keys == 0, "ssl_context_init");
+        
+        ssl_free(&ctx);
+        CHECK(ctx.has_keys == 0, "ssl_free");
     }
     
-    ssl_free(&ctx);
+    /* ssl_compute_master_secret */
+    {
+        uint8_t pms[] = {0x01, 0x02, 0x03};
+        uint8_t client_random[] = {0x01, 0x02, 0x03};
+        uint8_t server_random[] = {0x04, 0x05, 0x06};
+        uint8_t master_secret[48];
+        
+        int ret = ssl_compute_master_secret(pms, 3, client_random, 3, server_random, 3, master_secret);
+        CHECK(ret == 0, "ssl_compute_master_secret");
+        CHECK(master_secret[0] != 0 || master_secret[47] != 0, "master_secret non-zero");
+    }
     
-    printf("\n=== All SSL tests passed ===\n");
-    return 0;
+    /* ssl_derive_keys */
+    {
+        uint8_t master_secret[48] = {0};
+        uint8_t client_random[] = {0x01, 0x02, 0x03};
+        uint8_t server_random[] = {0x04, 0x05, 0x06};
+        uint8_t client_key[16], server_key[16];
+        uint8_t client_iv[16], server_iv[16];
+        
+        int ret = ssl_derive_keys(master_secret, client_random, 3, server_random, 3,
+                            client_key, NULL, server_key, NULL, client_iv, NULL, server_iv, NULL);
+        CHECK(ret == 0, "ssl_derive_keys");
+        CHECK(client_key[0] != server_key[0], "client_key != server_key");
+    }
+    
+    /* ssl_handshake_client (full key derivation) */
+    {
+        ssl_context ctx;
+        ssl_context_init(&ctx);
+        
+        uint8_t pms[] = {0x01, 0x02, 0x03};
+        uint8_t client_random[32], server_random[32];
+        for (int i = 0; i < 32; i++) {
+            client_random[i] = i;
+            server_random[i] = 0x20 - i;
+        }
+        
+        int ret = ssl_handshake_client(&ctx, NULL, 0, client_random, 32, server_random, 32, pms, 3);
+        CHECK(ret == 0, "ssl_handshake_client");
+        CHECK(ctx.has_keys == 1, "has_keys set");
+        
+        ssl_free(&ctx);
+    }
+    
+    /* ssl_encrypt_record / ssl_decrypt_record - use same context for symmetric test */
+    {
+        ssl_context ctx;
+        ssl_context_init(&ctx);
+        
+        /* Setup keys manually for symmetric test */
+        uint8_t pms[] = {0x01, 0x02, 0x03};
+        uint8_t client_random[32] = {0}, server_random[32] = {0};
+        ssl_handshake_client(&ctx, NULL, 0, client_random, 32, server_random, 32, pms, 3);
+        
+        /* Copy keys for symmetric encryption/decryption (client->server uses server keys) */
+        memcpy(ctx.server_write_key, ctx.client_write_key, 16);
+        memcpy(ctx.server_write_iv, ctx.client_write_iv, 16);
+        
+        /* Encrypt */
+        uint8_t plaintext[] = "Hello TLS!";
+        uint8_t ciphertext[128];
+        size_t cipher_len;
+        
+        int ret = ssl_encrypt_record(&ctx, 0x17, plaintext, 11, ciphertext, &cipher_len);
+        CHECK(ret == 0, "ssl_encrypt_record");
+        
+        /* Decrypt */
+        uint8_t content_type;
+        uint8_t decrypted[128];
+        size_t plain_len;
+        
+        ret = ssl_decrypt_record(&ctx, ciphertext, cipher_len, &content_type, decrypted, &plain_len);
+        CHECK(ret == 0, "ssl_decrypt_record");
+        CHECK(plain_len == 11, "decrypted length");
+        CHECK(memcmp(decrypted, plaintext, 11) == 0, "decrypted content");
+        
+        ssl_free(&ctx);
+    }
+    
+    /* ssl_encrypt_record without keys fails */
+    {
+        ssl_context ctx;
+        ssl_context_init(&ctx);
+        
+        uint8_t plaintext[] = "Test";
+        uint8_t ciphertext[64];
+        size_t cipher_len;
+        
+        int ret = ssl_encrypt_record(&ctx, 0x17, plaintext, 4, ciphertext, &cipher_len);
+        CHECK(ret != 0, "encrypt without keys fails");
+        
+        ssl_free(&ctx);
+    }
+    
+    printf("\n=== Results: %d passed, %d failed ===\n", g_pass, g_fail);
+    return g_fail > 0 ? 1 : 0;
 }

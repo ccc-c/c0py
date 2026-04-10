@@ -4,34 +4,53 @@ set -e
 
 cd "$(dirname "$0")"
 
-echo "=== Building SSL Socket test ==="
+echo "=== Building ssl_socket_test ==="
 gcc -I include -o test/ssl_socket_test test/ssl_socket_test.c \
     src/ssl_socket.c src/ssl.c src/crypto.c src/sha.c src/aes.c \
     src/bignum.c src/rsa.c src/certificate.c src/rand.c
 
-echo "=== Running SSL Socket test ==="
+if [ $? -ne 0 ]; then
+    echo "編譯失敗"
+    exit 1
+fi
 
-# Start server in background
+echo "=== ssl_socket_test built ==="
+
+SERVER_PID=""
+cleanup() {
+    if [ -n "$SERVER_PID" ]; then
+        kill $SERVER_PID 2>/dev/null || true
+        wait $SERVER_PID 2>/dev/null || true
+    fi
+}
+trap cleanup EXIT
+
+echo "=== Starting server ==="
 ./test/ssl_socket_test &
 SERVER_PID=$!
 
-# Wait for server to start listening
 sleep 2
 
-# Connect with openssl client
-echo "Connecting with openssl client..."
+if ! kill -0 $SERVER_PID 2>/dev/null; then
+    echo "Server failed to start"
+    exit 1
+fi
 
-# 修改前：
-# echo "Q" | openssl s_client -connect localhost:8444 -tls1_2 -servername localhost 2>&1 | head -30 || true
+echo "=== Testing with curl ==="
+RESPONSE=$(curl -k -s https://localhost:8444/ 2>&1)
+CURL_EXIT=$?
 
-# 修改後（加上 -legacy_renegotiation）：
-echo "Q" | openssl s_client -connect localhost:8444 -tls1_2 -legacy_renegotiation -servername localhost 2>&1 | head -30 || true
+if [ $CURL_EXIT -ne 0 ]; then
+    echo "curl failed with exit code: $CURL_EXIT"
+    echo "Response: $RESPONSE"
+    exit 1
+fi
 
-# Give server a moment to process
-sleep 1
+echo "Response: $RESPONSE"
 
-# Kill server if still running
-kill $SERVER_PID 2>/dev/null || true
-wait $SERVER_PID 2>/dev/null || true
-
-echo "=== All tests passed ==="
+if [ "$RESPONSE" = "OK" ]; then
+    echo "=== TEST PASSED ==="
+else
+    echo "=== TEST FAILED: unexpected response ==="
+    exit 1
+fi

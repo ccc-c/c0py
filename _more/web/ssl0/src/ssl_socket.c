@@ -1,4 +1,4 @@
-// ssl_socket.c
+// ssl_socket.c - TLS Server Socket Implementation
 
 #include "../include/ssl_socket.h"
 #include "../include/rand.h"
@@ -26,22 +26,181 @@ static int send_all(int fd, const uint8_t *buf, size_t len) {
     return 0;
 }
 
-static int recv_all(int fd, uint8_t *buf, size_t len) {
-    size_t received = 0;
-    while (received < len) {
-        ssize_t n = recv(fd, buf + received, len - received, 0);
-        if (n <= 0) return -1;
-        received += n;
-    }
-    return 0;
-}
-
 static int read_until(int fd, uint8_t *buf, size_t *pos, size_t target) {
     while (*pos < target) {
         ssize_t n = recv(fd, buf + *pos, target - *pos, 0);
         if (n <= 0) return -1;
         *pos += n;
     }
+    return 0;
+}
+
+static int base64_decode_char(char c) {
+    if (c >= 'A' && c <= 'Z') return c - 'A';
+    if (c >= 'a' && c <= 'z') return c - 'a' + 26;
+    if (c >= '0' && c <= '9') return c - '0' + 52;
+    if (c == '+') return 62;
+    if (c == '/') return 63;
+    return -1;
+}
+
+static size_t pem_to_der(const char *pem, uint8_t *der) {
+    const char *begin = strstr(pem, "-----BEGIN");
+    if (!begin) return 0;
+    const char *data_start = strchr(begin, '\n');
+    if (!data_start) return 0;
+    
+    const char *end = strstr(data_start, "-----END");
+    if (!end) return 0;
+
+    size_t out_len = 0;
+    uint32_t accumulator = 0;
+    int bits = 0;
+
+    for (const char *p = data_start; p < end; p++) {
+        int val = base64_decode_char(*p);
+        if (val >= 0) {
+            accumulator = (accumulator << 6) | val;
+            bits += 6;
+            if (bits >= 8) {
+                bits -= 8;
+                der[out_len++] = (accumulator >> bits) & 0xFF;
+            }
+        }
+    }
+    return out_len;
+}
+
+static int parse_private_key_pem(const char *pem, uint8_t *n, size_t *n_len, uint8_t *d, size_t *d_len) {
+    uint8_t der[4096];
+    size_t der_len = pem_to_der(pem, der);
+    if (der_len == 0) { return -1; }
+    
+    size_t pos = 0;
+    if (der[pos++] != 0x30) { return -1; }
+    
+    size_t total_len;
+    if (der[pos] < 0x80) {
+        total_len = der[pos++];
+    } else {
+        size_t num_bytes = der[pos++] & 0x7f;
+        total_len = 0;
+        for (size_t i = 0; i < num_bytes; i++) {
+            total_len = (total_len << 8) | der[pos++];
+        }
+    }
+    
+    // Skip outer SEQUENCE, read version
+    if (der[pos++] != 0x02) { return -1; }
+    size_t version_len = der[pos++];
+    uint8_t version = der[pos];
+    pos += version_len;
+    
+    // Check for PKCS#8 structure:
+    // After version INTEGER, PKCS#8 has AlgorithmIdentifier SEQUENCE (0x30)
+    // followed by OCTET STRING (0x04) containing PKCS#1 RSAPrivateKey
+    
+    size_t pkcs1_start = pos;
+    if (version == 0 && der[pos] == 0x30) {
+        // PKCS#8 - skip AlgorithmIdentifier
+        pos++;
+        size_t alg_len;
+        if (der[pos] < 0x80) {
+            alg_len = der[pos++];
+        } else if ((der[pos] & 0x7f) == 1) {
+            pos++;
+            alg_len = der[pos++];
+        } else if ((der[pos] & 0x7f) == 2) {
+            pos++;
+            alg_len = (der[pos] << 8) | der[pos+1];
+            pos += 2;
+        } else {
+            return -1;
+        }
+        pos += alg_len;
+        
+        // Next should be OCTET STRING containing PKCS#1
+        if (der[pos++] != 0x04) { return -1; }
+        
+        size_t octet_len;
+        if (der[pos] < 0x80) {
+            octet_len = der[pos++];
+        } else if ((der[pos] & 0x7f) == 1) {
+            pos++;
+            octet_len = der[pos++];
+        } else if ((der[pos] & 0x7f) == 2) {
+            pos++;
+            octet_len = (der[pos] << 8) | der[pos+1];
+            pos += 2;
+        } else {
+            return -1;
+        }
+        
+        pkcs1_start = pos;
+    }
+    
+    // Parse RSAPrivateKey from pkcs1_start
+    pos = pkcs1_start;
+    if (der[pos++] != 0x30) { return -1; }
+    
+    size_t pkcs1_total_len;
+    if (der[pos] < 0x80) {
+        pkcs1_total_len = der[pos++];
+    } else {
+        size_t num_bytes = der[pos++] & 0x7f;
+        pkcs1_total_len = 0;
+        for (size_t i = 0; i < num_bytes; i++) {
+            pkcs1_total_len = (pkcs1_total_len << 8) | der[pos++];
+        }
+    }
+    
+    // Skip version INTEGER
+    if (der[pos++] != 0x02) { return -1; }
+    size_t vlen = der[pos++];
+    pos += vlen;
+    
+    *n_len = 0;
+    *d_len = 0;
+    
+    int idx = 0;
+    size_t pkcs1_end = pkcs1_start + pkcs1_total_len + 2;
+    while (pos < der_len && pos < pkcs1_end) {
+        if (der[pos] != 0x02) { pos++; continue; }
+        
+        pos++;
+        size_t len;
+        if (der[pos] < 0x80) {
+            len = der[pos++];
+        } else if ((der[pos] & 0x7f) == 1) {
+            pos++;
+            len = der[pos++];
+        } else if ((der[pos] & 0x7f) == 2) {
+            pos++;
+            len = (der[pos] << 8) | der[pos+1];
+            pos += 2;
+        } else {
+            pos++;
+            continue;
+        }
+        
+        if (len > 256) len = 256;
+        
+        if (idx == 1 && *n_len == 0) {
+            *n_len = len;
+            memcpy(n, der + pos, len);
+        } else if (idx == 3 && *d_len == 0) {
+            *d_len = len;
+            memcpy(d, der + pos, len);
+        }
+        
+        pos += len;
+        idx++;
+    }
+    
+    if (*n_len == 0 || *d_len == 0) {
+        return -1;
+    }
+    
     return 0;
 }
 
@@ -82,8 +241,7 @@ int ssl_socket_bind(ssl_socket *sock, int port) {
 }
 
 static int build_server_hello(uint8_t *buf, size_t *len,
-                              const uint8_t *server_random,
-                              const uint8_t *session_id, size_t session_id_len) {
+                              const uint8_t *server_random) {
     size_t pos = 0;
     
     buf[pos++] = 0x03;
@@ -91,9 +249,7 @@ static int build_server_hello(uint8_t *buf, size_t *len,
     memcpy(buf + pos, server_random, 32);
     pos += 32;
     
-    buf[pos++] = session_id_len;
-    memcpy(buf + pos, session_id, session_id_len);
-    pos += session_id_len;
+    buf[pos++] = 0x00;
     
     buf[pos++] = 0x00;
     buf[pos++] = 0x2f;
@@ -152,45 +308,24 @@ static int build_tls_record(uint8_t *buf, size_t *len, uint8_t content_type, con
     return 0;
 }
 
-// === 新增：PEM 轉 DER 的輔助函數 ===
-static int base64_decode_char(char c) {
-    if (c >= 'A' && c <= 'Z') return c - 'A';
-    if (c >= 'a' && c <= 'z') return c - 'a' + 26;
-    if (c >= '0' && c <= '9') return c - '0' + 52;
-    if (c == '+') return 62;
-    if (c == '/') return 63;
+static int remove_pkcs1_padding(const uint8_t *input, size_t input_len, uint8_t *output, size_t *output_len) {
+    if (input_len < 2) return -1;
+    if (input[0] != 0x00) return -1;
+    
+    if (input[1] == 0x02) {
+        size_t i = 2;
+        while (i < input_len && input[i] != 0x00) i++;
+        if (i >= input_len) return -1;
+        
+        *output_len = input_len - i - 1;
+        memcpy(output, input + i + 1, *output_len);
+        return 0;
+    }
+    
     return -1;
 }
 
-static size_t pem_to_der(const char *pem, uint8_t *der) {
-    const char *begin = strstr(pem, "-----BEGIN");
-    if (!begin) return 0;
-    const char *data_start = strchr(begin, '\n');
-    if (!data_start) return 0;
-    
-    const char *end = strstr(data_start, "-----END");
-    if (!end) return 0;
-
-    size_t out_len = 0;
-    uint32_t accumulator = 0;
-    int bits = 0;
-
-    for (const char *p = data_start; p < end; p++) {
-        int val = base64_decode_char(*p);
-        if (val >= 0) {
-            accumulator = (accumulator << 6) | val;
-            bits += 6;
-            if (bits >= 8) {
-                bits -= 8;
-                der[out_len++] = (accumulator >> bits) & 0xFF;
-            }
-        }
-    }
-    return out_len;
-}
-// =================================
-
-int ssl_socket_accept(ssl_socket *sock, ssl_socket *client, const char *cert_pem) {
+int ssl_socket_accept(ssl_socket *sock, ssl_socket *client, const char *cert_pem, const char *key_pem) {
     memset(client, 0, sizeof(ssl_socket));
     ssl_context_init(&client->ctx);
     client->fd = -1;
@@ -198,35 +333,60 @@ int ssl_socket_accept(ssl_socket *sock, ssl_socket *client, const char *cert_pem
     
     struct sockaddr_in client_addr;
     socklen_t client_len = sizeof(client_addr);
-    // 1. 等待並接收 TCP 連線
     int client_fd = accept(sock->fd, (struct sockaddr *)&client_addr, &client_len);
     if (client_fd < 0) return -1;
     
     client->fd = client_fd;
     
-    // 解析 X.509 憑證
+    FILE *fp = fopen(key_pem, "r");
+    if (!fp) {
+        fprintf(stderr, "Cannot open key file: %s\n", key_pem);
+        close(client->fd);
+        return -1;
+    }
+    
+    char key_pem_data[4096];
+    size_t key_len = fread(key_pem_data, 1, sizeof(key_pem_data) - 1, fp);
+    key_pem_data[key_len] = '\0';
+    fclose(fp);
+    
+    uint8_t private_n[256], private_d[256];
+    size_t private_n_len, private_d_len;
+    if (parse_private_key_pem(key_pem_data, private_n, &private_n_len, private_d, &private_d_len) != 0) {
+        fprintf(stderr, "Failed to parse private key\n");
+        close(client->fd);
+        return -1;
+    }
+    
     x509_cert cert;
-    int parse_ret = x509_parse_from_pem(cert_pem, &cert);
-    if (parse_ret != 0) {
+    FILE *cf = fopen(cert_pem, "r");
+    if (!cf) {
+        fprintf(stderr, "Cannot open cert file: %s\n", cert_pem);
+        close(client->fd);
+        return -1;
+    }
+    char cert_pem_data[4096];
+    size_t cert_len = fread(cert_pem_data, 1, sizeof(cert_pem_data) - 1, cf);
+    cert_pem_data[cert_len] = '\0';
+    fclose(cf);
+    
+    if (x509_parse_from_pem(cert_pem_data, &cert) != 0) {
         fprintf(stderr, "Failed to parse certificate\n");
         close(client->fd);
-        client->fd = -1;
         return -1;
     }
     
     uint8_t recv_buf[2048];
     size_t recv_pos = 0;
     
-    // 2. 讀取並解析 ClientHello
-    if (recv_all(client->fd, recv_buf, 5) != 0) {
+    if (read_until(client->fd, recv_buf, &recv_pos, 5) != 0) {
         printf("DEBUG: Failed to read Record Header\n");
         goto handshake_err;
     }
     recv_pos = 5;
     
-    // 檢查是否為 TLS 協定 (0x16 0x03)
     if (recv_buf[0] != 0x16 || recv_buf[1] != 0x03) {
-        printf("DEBUG: Not a TLS Handshake Record (Type=0x%02x)\n", recv_buf[0]);
+        printf("DEBUG: Not a TLS Handshake Record\n");
         goto handshake_err;
     }
     
@@ -241,42 +401,27 @@ int ssl_socket_accept(ssl_socket *sock, ssl_socket *client, const char *cert_pem
         goto handshake_err;
     }
     
-    // 檢查 Handshake Type 是否為 ClientHello (0x01)
     if (recv_buf[5] != 0x01) {
-        printf("DEBUG: Not a ClientHello (Type=0x%02x)\n", recv_buf[5]);
+        printf("DEBUG: Not a ClientHello\n");
         goto handshake_err;
     }
     
-    // 取得 Handshake 長度
-    uint32_t handshake_len = (recv_buf[6] << 16) | (recv_buf[7] << 8) | recv_buf[8];
-    if (handshake_len + 4 != incoming_record_len) {
-        printf("DEBUG: Handshake length mismatch\n");
-        goto handshake_err;
-    }
-    
-    // 讀取 Client Random (位移 11)
     uint8_t client_random[32];
     memcpy(client_random, recv_buf + 11, 32);
     
-    // 3. 準備 ServerHello 資料
     uint8_t server_random[32];
     rand_bytes(server_random, 32);
     
-    uint8_t session_id[32];
-    uint8_t session_id_len = 32;
-    rand_bytes(session_id, session_id_len);
-    
     uint8_t server_hello[128];
     size_t server_hello_len = 0;
-    build_server_hello(server_hello, &server_hello_len, server_random, session_id, session_id_len);
+    build_server_hello(server_hello, &server_hello_len, server_random);
     
     uint8_t handshake_server_hello[128];
     size_t hs_len = 0;
     build_handshake_message(handshake_server_hello, &hs_len, 0x02, server_hello, server_hello_len);
     
-    // 4. 將 PEM 轉為 DER 以發送 Certificate
     uint8_t cert_der[2048];
-    size_t cert_der_len = pem_to_der(cert_pem, cert_der);
+    size_t cert_der_len = pem_to_der(cert_pem_data, cert_der);
     if (cert_der_len == 0) {
         fprintf(stderr, "Failed to decode PEM to DER\n");
         goto handshake_err;
@@ -290,7 +435,6 @@ int ssl_socket_accept(ssl_socket *sock, ssl_socket *client, const char *cert_pem
     size_t hs_cert_len = 0;
     build_handshake_message(handshake_cert, &hs_cert_len, 0x0b, cert_msg, cert_msg_len);
     
-    // 5. 準備 ServerHelloDone
     uint8_t server_hello_done[4];
     size_t shd_len = 0;
     build_server_hello_done(server_hello_done, &shd_len);
@@ -299,7 +443,6 @@ int ssl_socket_accept(ssl_socket *sock, ssl_socket *client, const char *cert_pem
     size_t hs_shd_len = 0;
     build_handshake_message(handshake_shd, &hs_shd_len, 0x0e, server_hello_done, shd_len);
     
-    // 6. 發送這三個封包
     uint8_t record_server_hello[2048];
     size_t record_len = 0;
     build_tls_record(record_server_hello, &record_len, 0x16, handshake_server_hello, hs_len);
@@ -315,70 +458,80 @@ int ssl_socket_accept(ssl_socket *sock, ssl_socket *client, const char *cert_pem
     build_tls_record(record_shd, &record_len, 0x16, handshake_shd, hs_shd_len);
     send_all(client->fd, record_shd, record_len);
     
-    // 7. 接收 ClientKeyExchange
     recv_pos = 0;
     if (read_until(client->fd, recv_buf, &recv_pos, 5) != 0) goto handshake_err;
     
     uint16_t record_len2 = (recv_buf[3] << 8) | recv_buf[4];
+    if (record_len2 > sizeof(recv_buf) - 5) goto handshake_err;
     if (read_until(client->fd, recv_buf, &recv_pos, 5 + record_len2) != 0) goto handshake_err;
     
-    if (recv_buf[0] != 0x16) goto handshake_err;
+    uint8_t *pRecordStart = recv_buf;
+    size_t record_offset = 0;
     
-    uint32_t handshake_len2 = (recv_buf[5] << 16) | (recv_buf[6] << 8) | recv_buf[7];
-    size_t handshake_data_offset = 5 + 4;
-    
-    size_t pos = handshake_data_offset;
-    while (pos < handshake_len2 + 4) {
-        uint8_t msg_type = recv_buf[pos];
-        uint32_t msg_len = (recv_buf[pos+1] << 16) | (recv_buf[pos+2] << 8) | recv_buf[pos+3];
+    while (record_offset < recv_pos) {
+        uint8_t content_type = pRecordStart[record_offset];
+        uint16_t rec_len = (pRecordStart[record_offset + 3] << 8) | pRecordStart[record_offset + 4];
         
-        if (msg_type == 0x10) { // Client Key Exchange
-            uint8_t pre_master_secret[48];
-            pre_master_secret[0] = 0x03;
-            pre_master_secret[1] = 0x03;
-            rand_bytes(pre_master_secret + 2, 46);
+        if (content_type == 0x14) {
+            record_offset += 5 + rec_len;
+            continue;
+        }
+        
+        if (content_type != 0x16) goto handshake_err;
+        
+        size_t pos = record_offset + 5;
+        while (pos < record_offset + 5 + rec_len) {
+            uint8_t msg_type = pRecordStart[pos];
+            uint32_t msg_len = (pRecordStart[pos+1] << 16) | (pRecordStart[pos+2] << 8) | pRecordStart[pos+3];
             
-            // 讀取前 2 bytes 的密文長度
-            uint16_t cipher_len = (recv_buf[pos+4] << 8) | recv_buf[pos+5];
-            
-            // 安全性檢查：防止密文長度超過 bignum 的容量 (256 bytes)
-            if (cipher_len > 256) cipher_len = 256;
-            
-            // 真正的密文資料從 pos + 6 開始
-            const uint8_t *cipher_data = recv_buf + pos + 6;
-            
-            bignum N, E, C;
-            bn_from_bytes(&N, cert.public_key.n, cert.public_key.n_len);
-            bn_from_bytes(&E, cert.public_key.e, cert.public_key.e_len);
-            bn_from_bytes(&C, cipher_data, cipher_len); // <-- 修正：傳入正確的指標與長度
-            
-            bignum PMS;
-            // ⚠️ 注意：目前依然是用公鑰(E)解密，解出來的必定是亂碼
-            bn_mod_exp(&PMS, &C, &E, &N); 
-            
-            uint8_t pms_bytes[48];
-            size_t pms_len;
-            bn_to_bytes(&PMS, pms_bytes, &pms_len);
-            
-            // 確保 PMS 補齊到 48 bytes
-            if (pms_len < 48) {
-                memmove(pms_bytes + 48 - pms_len, pms_bytes, pms_len);
-                memset(pms_bytes, 0, 48 - pms_len);
+            if (msg_type == 0x10) {
+                uint16_t cipher_len = (pRecordStart[pos+4] << 8) | pRecordStart[pos+5];
+                
+                if (cipher_len > 256) cipher_len = 256;
+                
+                const uint8_t *cipher_data = pRecordStart + pos + 6;
+                
+                uint8_t decrypted[256];
+                size_t decrypted_len;
+                
+                rsa_decrypt(private_n, private_n_len, private_d, private_d_len,
+                           cipher_data, cipher_len, decrypted, &decrypted_len);
+                
+                fprintf(stderr, "DEBUG: decrypted[0]=0x%02x, decrypted[1]=0x%02x, decrypted[2]=0x%02x, decrypted[3]=0x%02x\n",
+                        decrypted[0], decrypted[1], decrypted[2], decrypted[3]);
+                fprintf(stderr, "DEBUG: decrypted_len = %zu\n", decrypted_len);
+                
+                // Print first few bytes of decrypted
+                fprintf(stderr, "DEBUG: decrypted first 20 bytes: ");
+                for (size_t i = 0; i < 20 && i < decrypted_len; i++) {
+                    fprintf(stderr, "%02x ", decrypted[i]);
+                }
+                fprintf(stderr, "\n");
+                
+                uint8_t pre_master_secret[48];
+                size_t pms_len = 0;
+                if (remove_pkcs1_padding(decrypted, decrypted_len, pre_master_secret, &pms_len) != 0) {
+                    fprintf(stderr, "Failed to remove PKCS#1 padding\n");
+                    goto handshake_err;
+                }
+                
+                if (pms_len != 48) {
+                    fprintf(stderr, "Invalid PMS length: %zu\n", pms_len);
+                    goto handshake_err;
+                }
+                
+                ssl_handshake_client(&client->ctx, cert_der, cert_der_len,
+                                     client_random, 32, server_random, 32,
+                                     pre_master_secret, 48);
+                client->connected = 1;
+                break;
             }
             
-            // 這裡注意：如果是伺服器端，有時候可能要呼叫 ssl_handshake_server
-            // 但如果你的 API 只有 ssl_handshake_client，我們就先保留
-            ssl_handshake_client(&client->ctx, cert_der, cert_der_len,
-                                 client_random, 32, server_random, 32,
-                                 pms_bytes, 48);
-            client->connected = 1;
-            break;
+            pos += 4 + msg_len;
         }
-
-        pos += 4 + msg_len;
+        break;
     }
     
-    // 8. 發送 ChangeCipherSpec
     uint8_t change_cipher_spec[6];
     change_cipher_spec[0] = 0x14;
     change_cipher_spec[1] = 0x03;
@@ -387,6 +540,11 @@ int ssl_socket_accept(ssl_socket *sock, ssl_socket *client, const char *cert_pem
     change_cipher_spec[4] = 0x01;
     change_cipher_spec[5] = 0x01;
     send_all(client->fd, change_cipher_spec, 6);
+    
+    uint8_t finished[32];
+    size_t finished_len;
+    ssl_encrypt_record(&client->ctx, 0x16, (uint8_t*)"finished", 8, finished, &finished_len);
+    send_all(client->fd, finished, finished_len);
     
     x509_free(&cert);
     return 0;
@@ -404,13 +562,16 @@ int ssl_socket_read(ssl_socket *sock, uint8_t *buf, size_t len) {
     }
     
     uint8_t header[5];
-    if (recv_all(sock->fd, header, 5) != 0) return -1;
+    size_t pos = 0;
+    if (read_until(sock->fd, header, &pos, 5) != 0) return -1;
     
     uint16_t record_len = (header[3] << 8) | header[4];
     if (record_len > TLS_MAX_MESSAGE_LEN) return -1;
     
-    uint8_t *record = (uint8_t *)malloc(record_len);
-    if (read_until(sock->fd, record, &(size_t){0}, record_len) != 0) {
+    uint8_t *record = (uint8_t *)malloc(record_len + 5);
+    memcpy(record, header, 5);
+    size_t recv_pos = 5;
+    if (read_until(sock->fd, record, &recv_pos, 5 + record_len) != 0) {
         free(record);
         return -1;
     }
@@ -419,7 +580,7 @@ int ssl_socket_read(ssl_socket *sock, uint8_t *buf, size_t len) {
     uint8_t plaintext[TLS_MAX_MESSAGE_LEN];
     size_t plain_len;
     
-    int ret = ssl_decrypt_record(&sock->ctx, record, record_len + 5, &content_type, plaintext, &plain_len);
+    int ret = ssl_decrypt_record(&sock->ctx, record, recv_pos, &content_type, plaintext, &plain_len);
     free(record);
     
     if (ret != 0) return -1;

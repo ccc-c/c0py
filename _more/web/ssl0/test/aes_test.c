@@ -1,30 +1,47 @@
 #include <stdio.h>
 #include <string.h>
 #include "../include/aes.h"
+#include "../include/common.h"
 
-void print_hex(const char *label, const uint8_t *data, size_t len) {
+static void print_hex(const char *label, const uint8_t *data, size_t len) {
     printf("%s: ", label);
     for (size_t i = 0; i < len; i++) printf("%02x", data[i]);
     printf("\n");
 }
 
 int main() {
-    printf("=== AES-CBC Test ===\n");
-    uint8_t key[16] = {0};
-    uint8_t iv[16] = {0};
-    uint8_t plaintext[] = "Hello TLS!";
-    uint8_t ciphertext[32];
+    printf("=== AES tests ===\n\n");
     
-    aes_cbc_encrypt(key, iv, plaintext, 11, ciphertext);
-    print_hex("AES-CBC encrypt", ciphertext, 16);
-    printf("Expected: dd8946e286cf4c516e5f32e370f5ce9b\n");
+    /* AES-CBC encrypt/decrypt round-trip */
+    {
+        uint8_t key[16] = {0};
+        uint8_t iv[16] = {0};
+        uint8_t plaintext[] = "Hello TLS!";
+        uint8_t ciphertext[32];
+        
+        aes_cbc_encrypt(key, iv, plaintext, 11, ciphertext);
+        
+        uint8_t decrypted[32];
+        aes_cbc_decrypt(key, iv, ciphertext, 16, decrypted);
+        decrypted[11] = '\0';
+        
+        CHECK(strcmp((char *)decrypted, "Hello TLS!") == 0, "AES-CBC decrypt round-trip");
+    }
     
-    uint8_t decrypted[32];
-    aes_cbc_decrypt(key, iv, ciphertext, 16, decrypted);
-    decrypted[11] = '\0';
-    printf("AES-CBC decrypt: %s\n", decrypted);
-    printf("Expected: Hello TLS!\n");
+    /* AES-CBC known answer test */
+    {
+        uint8_t key[16] = {0};
+        uint8_t iv[16] = {0};
+        uint8_t plaintext[] = "Hello TLS!";
+        uint8_t ciphertext[32];
+        uint8_t expected[] = {0xdd, 0x89, 0x46, 0xe2, 0x86, 0xcf, 0x4c, 0x51,
+                           0x6e, 0x5f, 0x32, 0xe3, 0x70, 0xf5, 0xce, 0x9b};
+        
+        aes_cbc_encrypt(key, iv, plaintext, 11, ciphertext);
+        
+        CHECK(memcmp(ciphertext, expected, 16) == 0, "AES-CBC encrypt KAT");
+    }
     
-    printf("\n=== All tests passed ===\n");
-    return 0;
+    printf("\n=== Results: %d passed, %d failed ===\n", g_pass, g_fail);
+    return g_fail > 0 ? 1 : 0;
 }
