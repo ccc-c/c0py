@@ -21,6 +21,7 @@ static void free_node(XmlNode *node) {
     if (!node) return;
     free(node->tag);
     free(node->content);
+    free(node->attr);
     XmlNode *child = node->children;
     while (child) {
         XmlNode *next = child->next;
@@ -34,16 +35,19 @@ void xml_free(XmlNode *root) {
     free_node(root);
 }
 
-static XmlNode *new_node(char *tag, char *content) {
+static XmlNode *new_node(char *tag, char *content, char *attr) {
     XmlNode *node = malloc(sizeof(XmlNode));
     node->tag = strdup(tag);
     node->content = content ? strdup(content) : NULL;
+    node->attr = attr ? strdup(attr) : NULL;
+    node->parent = NULL;
     node->children = NULL;
     node->next = NULL;
     return node;
 }
 
 static void add_child(XmlNode *parent, XmlNode *child) {
+    child->parent = parent;
     if (!parent->children) {
         parent->children = child;
     } else {
@@ -77,7 +81,19 @@ XmlNode *xml_parse(const char *xml) {
         p = parse_tag_name(p, tag, 256);
         p = skip_whitespace(p);
 
-        XmlNode *node = new_node(tag, NULL);
+        char attr[512] = {0};
+        int alen = 0;
+        while (*p && *p != '>' && alen < 511) {
+            attr[alen++] = *p++;
+        }
+        char *a = attr;
+        while (*a == ' ' || *a == '\t') a++;
+        if (*a) {
+            char *end = a + strlen(a) - 1;
+            while (end > a && (*end == ' ' || *end == '\t')) *end-- = '\0';
+        }
+
+        XmlNode *node = new_node(tag, NULL, *a ? a : NULL);
 
         if (sp == 0) {
             root = node;
@@ -112,7 +128,9 @@ XmlNode *xml_parse(const char *xml) {
 void xml_print(XmlNode *node, int indent) {
     if (!node) return;
     for (int i = 0; i < indent; i++) printf("  ");
-    printf("<%s>", node->tag);
+    printf("<%s", node->tag);
+    if (node->attr) printf(" %s", node->attr);
+    printf(">");
     if (node->content) printf("%s", node->content);
     printf("\n");
     for (XmlNode *child = node->children; child; child = child->next) {
