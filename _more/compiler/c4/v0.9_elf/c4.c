@@ -1015,7 +1015,8 @@ void write_elf(char *filename) {
   char *shstr;
   char *packed_symtab;
 
-  text_sz = (long)(e - text_base) * sizeof(long);
+  // text_sz = (long)(e - text_base) * sizeof(long);
+  text_sz = (long)(e + 1 - text_base) * sizeof(long);
   data_sz = (long)(data - data_base);
   symtab_sz = symtab_count * 24; 
   strtab_sz = strtab_ptr;
