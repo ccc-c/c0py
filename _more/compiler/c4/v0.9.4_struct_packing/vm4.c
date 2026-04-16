@@ -1,47 +1,21 @@
 // vm4.c - Standalone ELF Loader and Virtual Machine (Self-Hostable)
-// Now using elegant standard C Structs with full packing support!
+// Uses pure pointer offsets to bypass c4 struct memory padding issues.
 
 #include <stdio.h>
 #include <stdlib.h>
-#include <string.h>
 #include <unistd.h>
 #include <fcntl.h>
+#include <string.h>
 #include <memory.h>
 
-enum { LLA ,IMM ,JMP ,JSR ,BZ  ,BNZ ,ENT ,ADJ ,LEV ,LI  ,LC  ,LW  ,LH  ,SI  ,SC  ,SW  ,SH  ,PSH ,
+enum { LLA ,IMM ,JMP ,JSR ,BZ  ,BNZ ,ENT ,ADJ ,LEV ,LI  ,LC  ,SI  ,SC  ,PSH ,
        OR  ,XOR ,AND ,EQ  ,NE  ,LT  ,GT  ,LE  ,GE  ,SHL ,SHR ,ADD ,SUB ,MUL ,DIV ,MOD ,
        LF  ,SF  ,IMMF,ITF ,ITFS,FTI ,FADD,FSUB,FMUL,FDIV,
        FEQ ,FNE ,FLT ,FGT ,FLE ,FGE ,PRTF_DBL,
        OPEN,READ,WRIT,CLOS,PRTF,MALC,FREE,MSET,MCMP,EXIT };
 
-char *instr_name = "LLA ,IMM ,JMP ,JSR ,BZ  ,BNZ ,ENT ,ADJ ,LEV ,LI  ,LC  ,LW  ,LH  ,SI  ,SC  ,SW  ,SH  ,PSH ,OR  ,XOR ,AND ,EQ  ,NE  ,LT  ,GT  ,LE  ,GE  ,SHL ,SHR ,ADD ,SUB ,MUL ,DIV ,MOD ,LF  ,SF  ,IMMF,ITF ,ITFS,FTI ,FADD,FSUB,FMUL,FDIV,FEQ ,FNE ,FLT ,FGT ,FLE ,FGE ,PRTF,OPEN,READ,WRIT,CLOS,PRTF,MALC,FREE,MSET,MCMP,EXIT,";
-long debug = 0;
-
-// 現在我們可以直接使用完美對齊的結構！
-struct Elf64_Ehdr {
-    char e_ident[16];
-    short e_type;      short e_machine;
-    int e_version;     long e_entry;
-    long e_phoff;      long e_shoff;
-    int e_flags;       short e_ehsize;
-    short e_phentsize; short e_phnum;
-    short e_shentsize; short e_shnum;
-    short e_shstrndx;
-};
-
-struct Elf64_Shdr {
-    int sh_name;       int sh_type;
-    long sh_flags;      long sh_addr;
-    long sh_offset;     long sh_size;
-    int sh_link;       int sh_info;
-    long sh_addralign;  long sh_entsize;
-};
-
-struct Elf64_Sym {
-    int st_name;    char st_info;
-    char st_other;  short st_shndx;
-    long st_value;  long st_size;
-};
+char *instr_name;
+long debug;
 
 double long_to_double(long v) { return *(double *)&v; }
 long   double_to_long(double d) { return *(long *)&d; }
@@ -77,15 +51,10 @@ long run(long *pc, long *bp, long *sp, char *d_base, long *t_base, long poolsz) 
     else if (i == ADJ) sp = sp + *pc++;
     else if (i == LEV) { sp = bp; bp = (long *)*sp++; pc = t_base + *sp++; }
     
-    // 全新的 LH, LW 等 2/4-byte 載入與儲存指令支援
     else if (i == LI)  a = *(long *)to_addr(a, (long)d_base, poolsz);
     else if (i == LC)  a = *(char *)to_addr(a, (long)d_base, poolsz);
-    else if (i == LW)  a = *(int *)to_addr(a, (long)d_base, poolsz);
-    else if (i == LH)  a = *(short *)to_addr(a, (long)d_base, poolsz);
     else if (i == SI)  { t_addr = *sp++; *(long *)to_addr(t_addr, (long)d_base, poolsz) = a; }
     else if (i == SC)  { t_addr = *sp++; a = *(char *)to_addr(t_addr, (long)d_base, poolsz) = a; }
-    else if (i == SW)  { t_addr = *sp++; *(int *)to_addr(t_addr, (long)d_base, poolsz) = a; }
-    else if (i == SH)  { t_addr = *sp++; *(short *)to_addr(t_addr, (long)d_base, poolsz) = a; }
     else if (i == PSH) *--sp = a;
 
     else if (i == OR)  a = *sp++ |  a;
@@ -166,6 +135,20 @@ long run(long *pc, long *bp, long *sp, char *d_base, long *t_base, long poolsz) 
   }
 }
 
+// 記憶體讀取與搬移 (自己刻，不依賴 libc，完全相容 c4)
+long r16(char *buf, long p) { return (buf[p] & 0xFF) | ((buf[p+1] & 0xFF) << 8); }
+long r32(char *buf, long p) { return r16(buf, p) | (r16(buf, p+2) << 16); }
+long r64(char *buf, long p) { return r32(buf, p) | (r32(buf, p+4) << 32); }
+
+void mem_cpy(char *dst, char *src, long size) {
+    long i;
+    i = 0;
+    while (i < size) {
+        dst[i] = src[i];
+        i = i + 1;
+    }
+}
+
 int main(int argc, char **argv) {
     long poolsz;
     long *text_base, *sp, *bp;
@@ -176,17 +159,17 @@ int main(int argc, char **argv) {
     
     char *file_buf;
     long file_size;
-    struct Elf64_Ehdr *ehdr;
-    struct Elf64_Shdr *shdrs;
-    struct Elf64_Shdr *sec_text, *sec_data, *sec_symtab, *sec_strtab;
-    struct Elf64_Sym *syms, *sym;
-    char *strs;
-    
-    long main_offset, text_count, exit_offset, num_syms;
-    long i;
+    long e_shoff, e_shnum;
+    long sh_text, sh_data, sh_symtab, sh_strtab;
+    long text_off, text_sz, data_off, data_sz;
+    long symtab_off, symtab_sz, strtab_off, strtab_sz;
+    long i, num_syms, sym_p, name_off;
     char *sym_name;
+    long main_offset, text_count, exit_offset;
 
+    instr_name = "LLA ,IMM ,JMP ,JSR ,BZ  ,BNZ ,ENT ,ADJ ,LEV ,LI  ,LC  ,SI  ,SC  ,PSH ,OR  ,XOR ,AND ,EQ  ,NE  ,LT  ,GT  ,LE  ,GE  ,SHL ,SHR ,ADD ,SUB ,MUL ,DIV ,MOD ,LF  ,SF  ,IMMF,ITF ,ITFS,FTI ,FADD,FSUB,FMUL,FDIV,FEQ ,FNE ,FLT ,FGT ,FLE ,FGE ,PRTF,OPEN,READ,WRIT,CLOS,PRTF,MALC,FREE,MSET,MCMP,EXIT,";
     poolsz = 1024 * 1024;
+    debug = 0;
     arg_idx = 1;
 
     if (argc > 1) {
@@ -208,38 +191,53 @@ int main(int argc, char **argv) {
     file_size = read(fd, file_buf, poolsz);
     close(fd);
 
-    ehdr = (struct Elf64_Ehdr *)file_buf;
-    if (ehdr->e_ident[0] != 0x7f || ehdr->e_ident[1] != 'E' || ehdr->e_ident[2] != 'L' || ehdr->e_ident[3] != 'F') {
+    // 檢查 Magic Number
+    if (file_buf[0] != 0x7f || file_buf[1] != 'E' || file_buf[2] != 'L' || file_buf[3] != 'F') {
         printf("Error: Not a valid ELF file.\n");
         return -1;
     }
 
-    // 透過 char* 位移來保證精準抓取 Struct 陣列元素
-    shdrs = (struct Elf64_Shdr *)(file_buf + ehdr->e_shoff);
-    sec_text   = (struct Elf64_Shdr *)((char *)shdrs + 1 * sizeof(struct Elf64_Shdr));
-    sec_data   = (struct Elf64_Shdr *)((char *)shdrs + 2 * sizeof(struct Elf64_Shdr));
-    sec_symtab = (struct Elf64_Shdr *)((char *)shdrs + 3 * sizeof(struct Elf64_Shdr));
-    sec_strtab = (struct Elf64_Shdr *)((char *)shdrs + 4 * sizeof(struct Elf64_Shdr));
+    // 手動位移解析 ELF Header
+    e_shoff = r64(file_buf, 40);
+    e_shnum = r16(file_buf, 60);
 
-    text_base = (long *)malloc(sec_text->sh_size + 8);
-    data_base = (char *)malloc(sec_data->sh_size + 8);
+    // 根據 c4.c 的寫出順序，1=text, 2=data, 3=symtab, 4=strtab
+    sh_text = e_shoff + 64 * 1;
+    sh_data = e_shoff + 64 * 2;
+    sh_symtab = e_shoff + 64 * 3;
+    sh_strtab = e_shoff + 64 * 4;
+
+    text_off = r64(file_buf, sh_text + 24);
+    text_sz  = r64(file_buf, sh_text + 32);
+
+    data_off = r64(file_buf, sh_data + 24);
+    data_sz  = r64(file_buf, sh_data + 32);
+
+    symtab_off = r64(file_buf, sh_symtab + 24);
+    symtab_sz  = r64(file_buf, sh_symtab + 32);
+
+    strtab_off = r64(file_buf, sh_strtab + 24);
+    strtab_sz  = r64(file_buf, sh_strtab + 32);
+
+    // 配置虛擬機記憶體
+    text_base = (long *)malloc(text_sz + 8);
+    data_base = (char *)malloc(data_sz + 8);
     sp = (long *)malloc(poolsz);
 
-    memcpy((char *)text_base, file_buf + sec_text->sh_offset, sec_text->sh_size);
-    memcpy(data_base, file_buf + sec_data->sh_offset, sec_data->sh_size);
+    mem_cpy((char *)text_base, file_buf + text_off, text_sz);
+    mem_cpy(data_base, file_buf + data_off, data_sz);
 
-    syms = (struct Elf64_Sym *)(file_buf + sec_symtab->sh_offset);
-    strs = file_buf + sec_strtab->sh_offset;
-
+    // 在 symtab 裡面尋找 main 函數
     main_offset = -1;
-    num_syms = sec_symtab->sh_size / sizeof(struct Elf64_Sym);
-    
+    num_syms = symtab_sz / 24;
     i = 0;
     while (i < num_syms) {
-        sym = (struct Elf64_Sym *)((char *)syms + i * sizeof(struct Elf64_Sym));
-        sym_name = strs + sym->st_name;
+        sym_p = symtab_off + i * 24;
+        name_off = r32(file_buf, sym_p + 0);
+        sym_name = file_buf + strtab_off + name_off;
+
         if (sym_name[0] == 'm' && sym_name[1] == 'a' && sym_name[2] == 'i' && sym_name[3] == 'n' && sym_name[4] == 0) {
-            main_offset = sym->st_value;
+            main_offset = r64(file_buf, sym_p + 8);
             break;
         }
         i = i + 1;
@@ -250,8 +248,10 @@ int main(int argc, char **argv) {
         return -1;
     }
 
+    // 設定啟動堆疊
     bp = sp = (long *)((long)sp + poolsz);
-    text_count = sec_text->sh_size / sizeof(long);
+
+    text_count = text_sz / sizeof(long);
     exit_offset = text_count - 2;
 
     *--sp = argc - arg_idx;
