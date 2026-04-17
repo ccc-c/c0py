@@ -41,11 +41,17 @@ struct Elf64_Sym {
 // -------------------------------------------------------
 struct Rela {
   long r_offset;   // text 中需要被填的 slot 位址 (以 long 為單位的 index)
-  long r_symidx;   // symtab 中的符號 index
-  long r_type;     // RELA_DATA=1(填 data offset), RELA_FUNC=2(填 text offset)
+  long r_symidx;   // symtab 中的符號 index（-1 = 內部 reloc，無對應符號）
+  long r_type;     // RELA_DATA=1, RELA_FUNC=2, RELA_JMP=3
 };
 
-enum { RELA_DATA = 1, RELA_FUNC = 2 };
+// r_type 說明：
+//   RELA_DATA = 1 : text[r_offset] 需填入 data segment 的 byte offset（含跨 ELF 偏移）
+//   RELA_FUNC = 2 : text[r_offset] 需填入 text segment 的 long index（含跨 ELF 偏移）
+//   RELA_JMP  = 3 : text[r_offset] 需填入 text segment 的 long index（JMP/BZ/BNZ）
+// r_symidx >= 0 : 外部符號，需查 symtab 找定義
+// r_symidx == -1: 內部符號，r_offset 處的現有值是本 ELF 內的 index，需加 base
+enum { RELA_DATA = 1, RELA_FUNC = 2, RELA_JMP = 3 };
 
 char *data_base;
 long *text_base;
@@ -313,7 +319,9 @@ void expr(long lev)
     ty = DOUBLE;
   }
   else if (tk == '"') {
-    *++e = IMM; *++e = ival; next();
+    *++e = IMM; *++e = ival;
+    add_rela((long)(e - text_base), -1, RELA_DATA); // 字串在 data segment，需重定位
+    next();
     while (tk == '"') next();
     data = (char *)(((long)data + sizeof(long)) & -sizeof(long)); ty = PTR;
   }
@@ -345,7 +353,10 @@ void expr(long lev)
       while (tk != ')') { expr(Assign); *++e = PSH; ++t; if (tk == ',') next(); }
       next();
       if (s->v_class == Sys) *++e = s->v_val;
-      else if (s->v_class == Fun) { *++e = JSR; *++e = s->v_val; }
+      else if (s->v_class == Fun) {
+        *++e = JSR; *++e = s->v_val;
+        add_rela((long)(e - text_base), -1, RELA_FUNC); // 內部呼叫，需加 text_base
+      }
       else if (s->v_class == ExtFun) {
         // 外部函式呼叫：JSR + placeholder，記 relocation
         *++e = JSR; *++e = 0;
@@ -368,11 +379,13 @@ void expr(long lev)
         }
       }
       else if (s->v_class == GloArr) {
-        *++e = IMM; *++e = s->v_val; 
+        *++e = IMM; *++e = s->v_val;
+        add_rela((long)(e - text_base), -1, RELA_DATA); // 內部 data 位址
         ty = s->v_type;
       }
       else if (s->v_class == Glo) {
         *++e = IMM; *++e = s->v_val;
+        add_rela((long)(e - text_base), -1, RELA_DATA); // 內部 data 位址
         ty = s->v_type;
         if      (ty == CHAR)       *++e = LC;
         else if (is_float_ty(ty))  *++e = LF;
@@ -477,12 +490,15 @@ void expr(long lev)
       *++e = BZ; d = ++e;
       expr(Assign);
       if (tk == ':') next(); else error("conditional missing colon");
-      *d = (long)(e + 3 - text_base); *++e = JMP; d = ++e;
+      *d = (long)(e + 3 - text_base);
+      add_rela((long)((long *)d - text_base), -1, RELA_JMP);  // BZ operand
+      *++e = JMP; d = ++e;
       expr(Cond);
       *d = (long)(e + 1 - text_base);
+      add_rela((long)((long *)d - text_base), -1, RELA_JMP);  // JMP operand
     }
-    else if (tk == Lor) { next(); *++e = BNZ; d = ++e; expr(Lan); *d = (long)(e + 1 - text_base); ty = INT; }
-    else if (tk == Lan) { next(); *++e = BZ;  d = ++e; expr(Or);  *d = (long)(e + 1 - text_base); ty = INT; }
+    else if (tk == Lor) { next(); *++e = BNZ; d = ++e; expr(Lan); *d = (long)(e + 1 - text_base); add_rela((long)((long *)d - text_base), -1, RELA_JMP); ty = INT; }
+    else if (tk == Lan) { next(); *++e = BZ;  d = ++e; expr(Or);  *d = (long)(e + 1 - text_base); add_rela((long)((long *)d - text_base), -1, RELA_JMP); ty = INT; }
     else if (tk == Or)  { next(); *++e = PSH; expr(Xor); *++e = OR;  ty = INT; }
     else if (tk == Xor) { next(); *++e = PSH; expr(And); *++e = XOR; ty = INT; }
     else if (tk == And) { next(); *++e = PSH; expr(Eq);  *++e = AND; ty = INT; }
@@ -644,11 +660,14 @@ void stmt()
     *++e = BZ; b = ++e;
     stmt();
     if (tk == Else) {
-      *b = (long)(e + 3 - text_base); *++e = JMP; b = ++e;
+      *b = (long)(e + 3 - text_base);
+      add_rela((long)(b - text_base), -1, RELA_JMP);  // BZ operand
+      *++e = JMP; b = ++e;
       next();
       stmt();
     }
     *b = (long)(e + 1 - text_base);
+    add_rela((long)(b - text_base), -1, RELA_JMP);  // BZ or JMP operand
   }
   else if (tk == While) {
     next();
@@ -659,13 +678,15 @@ void stmt()
     *++e = BZ; b = ++e;
     stmt();
     *++e = JMP; *++e = (long)a;
+    add_rela((long)(e - text_base), -1, RELA_JMP);  // JMP back to loop top
     *b = (long)(e + 1 - text_base);
+    add_rela((long)(b - text_base), -1, RELA_JMP);  // BZ exit operand
     p2 = b + 1;
     while (p2 < e) {
       if (*p2 == JMP) {
         ++p2;
-        if (*p2 == -1) *p2 = (long)(e + 1 - text_base);
-        else if (*p2 == -2) *p2 = (long)a;
+        if (*p2 == -1) { *p2 = (long)(e + 1 - text_base); add_rela((long)(p2 - text_base), -1, RELA_JMP); }
+        else if (*p2 == -2) { *p2 = (long)a; add_rela((long)(p2 - text_base), -1, RELA_JMP); }
       }
       ++p2;
     }
@@ -683,29 +704,32 @@ void stmt()
     d = (long)(e + 1 - text_base);
     if (tk != ')') expr(Assign);
     *++e = JMP; *++e = (long)a;
+    add_rela((long)(e - text_base), -1, RELA_JMP);   // JMP back to condition
     *c = (long)(e + 1 - text_base);
+    add_rela((long)(c - text_base), -1, RELA_JMP);   // JMP to body
     if (tk == ')') next(); else error("close paren expected");
     stmt();
     *++e = JMP; *++e = (long)d;
-    if (b) *b = (long)(e + 1 - text_base);
+    add_rela((long)(e - text_base), -1, RELA_JMP);   // JMP to increment
+    if (b) { *b = (long)(e + 1 - text_base); add_rela((long)(b - text_base), -1, RELA_JMP); }
     p2 = c + 1;
     while (p2 < e) {
       if (*p2 == JMP) {
         ++p2;
-        if (*p2 == -1) *p2 = (long)(e + 1 - text_base);
-        else if (*p2 == -2) *p2 = (long)d;
+        if (*p2 == -1) { *p2 = (long)(e + 1 - text_base); add_rela((long)(p2 - text_base), -1, RELA_JMP); }
+        else if (*p2 == -2) { *p2 = (long)d; add_rela((long)(p2 - text_base), -1, RELA_JMP); }
       }
       ++p2;
     }
   }
   else if (tk == Break) {
     next();
-    *++e = JMP; *++e = -1;
+    *++e = JMP; *++e = -1;   // placeholder, patched by enclosing while/for
     if (tk == ';') next(); else error("semicolon expected");
   }
   else if (tk == Continue) {
     next();
-    *++e = JMP; *++e = -2;
+    *++e = JMP; *++e = -2;   // placeholder, patched by enclosing while/for
     if (tk == ';') next(); else error("semicolon expected");
   }
   else if (tk == Return) {
